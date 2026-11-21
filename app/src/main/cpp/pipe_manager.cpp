@@ -58,18 +58,16 @@ void PipeManager::writeStdin(const std::string& input) {
 
 void PipeManager::readLoop(int fd, const std::function<void(const std::string&)>& callback) {
     char buffer[1024];
-    while (m_running.load()) {
+    while (true) {
         ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
         if (bytesRead > 0) {
             buffer[bytesRead] = '\0';
             if (callback) {
                 callback(std::string(buffer, bytesRead));
             }
-        } else if (bytesRead == 0) {
-            // EOF
-            break;
         } else {
-            if (!m_running.load()) break;
+            // EOF or error
+            break;
         }
     }
 }
@@ -100,20 +98,21 @@ void PipeManager::stop() {
         m_saved_stdin = -1;
     }
 
-    // Close pipe ends
+    // Close pipe writer ends - this sends EOF to readLoop threads
     if (m_stdout_pipe[1] >= 0) { close(m_stdout_pipe[1]); m_stdout_pipe[1] = -1; }
     if (m_stderr_pipe[1] >= 0) { close(m_stderr_pipe[1]); m_stderr_pipe[1] = -1; }
     if (m_stdin_pipe[0] >= 0) { close(m_stdin_pipe[0]); m_stdin_pipe[0] = -1; }
     if (m_stdin_pipe[1] >= 0) { close(m_stdin_pipe[1]); m_stdin_pipe[1] = -1; }
 
-    // Shutdown reader ends to unblock threads
-    if (m_stdout_pipe[0] >= 0) { close(m_stdout_pipe[0]); m_stdout_pipe[0] = -1; }
-    if (m_stderr_pipe[0] >= 0) { close(m_stderr_pipe[0]); m_stderr_pipe[0] = -1; }
-
+    // Wait for reader threads to finish reading remaining output
     if (m_stdout_thread.joinable()) {
         m_stdout_thread.join();
     }
     if (m_stderr_thread.joinable()) {
         m_stderr_thread.join();
     }
+
+    // Finally close reader ends
+    if (m_stdout_pipe[0] >= 0) { close(m_stdout_pipe[0]); m_stdout_pipe[0] = -1; }
+    if (m_stderr_pipe[0] >= 0) { close(m_stderr_pipe[0]); m_stderr_pipe[0] = -1; }
 }

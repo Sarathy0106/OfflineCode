@@ -52,6 +52,7 @@ add_library(offlinecode SHARED
     pipe_manager.cpp
     tcc_runner.cpp
     python_runner.cpp
+    cpp_runner.cpp
 )
 
 target_link_libraries(offlinecode

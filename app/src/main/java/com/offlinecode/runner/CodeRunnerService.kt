@@ -6,6 +6,7 @@ import android.os.Debug
 import android.os.IBinder
 import android.os.Process
 import com.offlinecode.runner.engines.CEngine
+import com.offlinecode.runner.engines.CppEngine
 import com.offlinecode.runner.engines.JavaEngine
 import com.offlinecode.runner.engines.PythonEngine
 import kotlinx.coroutines.*
@@ -17,6 +18,7 @@ class CodeRunnerService : Service() {
     private val runExecutor = Executors.newSingleThreadExecutor()
 
     private var cEngine: CEngine? = null
+    private var cppEngine: CppEngine? = null
     private var pythonEngine: PythonEngine? = null
     private var javaEngine: JavaEngine? = null
 
@@ -102,8 +104,8 @@ class CodeRunnerService : Service() {
                                 exitCode = javaEngine!!.run(sourceCode, callback)
                             }
                             "cpp" -> {
-                                callback.onStderr("C++ requires the Clang pack from Settings.\n")
-                                exitCode = 1
+                                if (cppEngine == null) cppEngine = CppEngine(applicationContext)
+                                exitCode = cppEngine!!.run(sourceCode, callback)
                             }
                             else -> {
                                 callback.onStderr("Unsupported language: $language\n")
@@ -131,6 +133,7 @@ class CodeRunnerService : Service() {
         override fun sendStdin(input: String) {
             when (activeLanguage?.lowercase()) {
                 "c" -> cEngine?.writeStdin(input)
+                "cpp" -> cppEngine?.writeStdin(input)
                 "python" -> pythonEngine?.writeStdin(input)
                 "java" -> javaEngine?.writeStdin(input)
             }

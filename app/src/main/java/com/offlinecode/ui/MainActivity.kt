@@ -334,7 +334,7 @@ fun MainScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     PackItem(name = "Java Engine", details = "ECJ Compiler + D8 Dex • ~9.3 MB", status = "Installed")
                     Spacer(modifier = Modifier.height(8.dp))
-                    PackItem(name = "C++ Engine", details = "Clang + libc++ sysroot • ~35 MB", status = "Optional Pack")
+                    PackItem(name = "C++ Engine", details = "Clang + libc++ sysroot • Built-in", status = "Installed")
                 }
             },
             confirmButton = {

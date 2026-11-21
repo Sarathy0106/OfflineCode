@@ -26,7 +26,7 @@ android {
         }
 
         ndk {
-            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+            abiFilters.addAll(listOf("arm64-v8a"))
         }
     }
 
@@ -61,6 +61,7 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            keepDebugSymbols += "**/*.so"
         }
     }
 
