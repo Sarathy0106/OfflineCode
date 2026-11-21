@@ -1,9 +1,12 @@
 package com.offlinecode.ui
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,8 +24,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +42,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        intent?.data?.let { uri ->
+            viewModel.openFileFromUri(this, uri)
+        }
 
         setContent {
             OfflineCodeTheme(darkTheme = true) {
@@ -58,6 +68,34 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.data?.let { uri ->
+            viewModel.openFileFromUri(this, uri)
+        }
+    }
+}
+
+@Composable
+fun CompactIconButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    desc: String,
+    tint: Color = Color.LightGray,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier.size(34.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = desc,
+            tint = tint,
+            modifier = Modifier.size(18.dp)
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,6 +104,7 @@ fun MainScreen(
     viewModel: MainViewModel,
     onShare: (String, String) -> Unit
 ) {
+    val context = LocalContext.current
     val selectedLanguage by viewModel.selectedLanguage.collectAsState()
     val editorValue by viewModel.editorValue.collectAsState()
     val runEvents by viewModel.runEvents.collectAsState()
@@ -73,12 +112,29 @@ fun MainScreen(
     val fontSizeSp by viewModel.fontSizeSp.collectAsState()
     val timeoutSeconds by viewModel.timeoutSeconds.collectAsState()
     val savedSnippets by viewModel.savedSnippets.collectAsState()
+    val currentFileName by viewModel.currentFileName.collectAsState()
 
     var showSnippetsDialog by remember { mutableStateOf(false) }
     var showPacksDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showSaveSnippetDialog by remember { mutableStateOf(false) }
     var newSnippetTitle by remember { mutableStateOf("") }
+
+    val openFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.openFileFromUri(context, uri)
+        }
+    }
+
+    val saveFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("*/*")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.saveFileToUri(context, uri)
+        }
+    }
 
     val languages = listOf(
         "python" to "Python",
@@ -89,37 +145,70 @@ fun MainScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
+            // Ultra-compact Top Bar with Status Bar Padding
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF1E1E1E))
+                    .statusBarsPadding()
+                    .height(46.dp)
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Title and Active File Name
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
                     Text(
                         text = "OfflineCode",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Color.White
+                        fontSize = 15.sp,
+                        color = Color.White,
+                        maxLines = 1,
+                        softWrap = false
                     )
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.undo() }) {
-                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo", tint = Color.LightGray)
+                    if (currentFileName != null) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF2D2D2D))
+                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = currentFileName!!,
+                                fontSize = 11.sp,
+                                color = PrimaryBlue,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
                     }
-                    IconButton(onClick = { viewModel.redo() }) {
-                        Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo", tint = Color.LightGray)
-                    }
-                    IconButton(onClick = { showSnippetsDialog = true }) {
-                        Icon(Icons.Default.Folder, contentDescription = "Snippets", tint = Color.LightGray)
-                    }
-                    IconButton(onClick = { showPacksDialog = true }) {
-                        Icon(Icons.Default.Extension, contentDescription = "Packs", tint = Color.LightGray)
-                    }
-                    IconButton(onClick = { showSettingsDialog = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.LightGray)
-                    }
-                    IconButton(onClick = { onShare(editorValue.text, selectedLanguage) }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.LightGray)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1E1E1E))
-            )
+                }
+
+                // Compact Actions
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CompactIconButton(onClick = { viewModel.undo() }, icon = Icons.AutoMirrored.Filled.Undo, desc = "Undo")
+                    CompactIconButton(onClick = { viewModel.redo() }, icon = Icons.AutoMirrored.Filled.Redo, desc = "Redo")
+                    CompactIconButton(
+                        onClick = { openFileLauncher.launch(arrayOf("*/*", "text/*")) },
+                        icon = Icons.Default.FileOpen,
+                        desc = "Open File"
+                    )
+                    CompactIconButton(
+                        onClick = { saveFileLauncher.launch(viewModel.getDefaultFileName()) },
+                        icon = Icons.Default.Save,
+                        desc = "Save to Device"
+                    )
+                    CompactIconButton(onClick = { showSnippetsDialog = true }, icon = Icons.Default.Folder, desc = "Snippets")
+                    CompactIconButton(onClick = { showPacksDialog = true }, icon = Icons.Default.Extension, desc = "Packs")
+                    CompactIconButton(onClick = { showSettingsDialog = true }, icon = Icons.Default.Settings, desc = "Settings")
+                    CompactIconButton(onClick = { onShare(editorValue.text, selectedLanguage) }, icon = Icons.Default.Share, desc = "Share")
+                }
+            }
         }
     ) { innerPadding ->
         Column(
@@ -127,12 +216,13 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Secondary Control Bar: Language selector and Run/Stop button
+            // Secondary Control Bar: Language selector and Run/Stop button (Height: 38dp)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(38.dp)
                     .background(Color(0xFF252526))
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -144,15 +234,15 @@ fun MainScreen(
                         val isSelected = selectedLanguage == id
                         Box(
                             modifier = Modifier
-                                .padding(end = 6.dp)
-                                .clip(RoundedCornerShape(6.dp))
+                                .padding(end = 5.dp)
+                                .clip(RoundedCornerShape(5.dp))
                                 .background(if (isSelected) PrimaryBlue else Color(0xFF333333))
                                 .clickable { viewModel.selectLanguage(id) }
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = label,
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 color = if (isSelected) Color.White else Color.LightGray
                             )
@@ -164,28 +254,30 @@ fun MainScreen(
                     Button(
                         onClick = { viewModel.stopCode() },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        shape = RoundedCornerShape(5.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        modifier = Modifier.height(28.dp)
                     ) {
-                        Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Stop", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Stop", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 } else {
                     Button(
                         onClick = { viewModel.runCode() },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        shape = RoundedCornerShape(5.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        modifier = Modifier.height(28.dp)
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Run", modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Run", modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Run", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Run", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
-            // Editor Pane (Top)
+            // Editor Pane (Occupies maximum available space)
             EditorView(
                 textFieldValue = editorValue,
                 onValueChange = { viewModel.onEditorChange(it) },
@@ -196,12 +288,12 @@ fun MainScreen(
                     .fillMaxWidth()
             )
 
-            // Extra Symbol Row (Keyboard accessory)
+            // Symbol Row (Keyboard accessory)
             SymbolRow(
                 onInsertSymbol = { symbol -> viewModel.insertSymbol(symbol) }
             )
 
-            // Console Panel (Bottom)
+            // Collapsible Console Panel
             ConsolePanel(
                 events = runEvents,
                 isRunning = isRunning,
@@ -209,9 +301,7 @@ fun MainScreen(
                 onStop = { viewModel.stopCode() },
                 onClear = { viewModel.clearConsole() },
                 onJumpToLine = { line, col -> viewModel.jumpToLine(line, col) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(240.dp)
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
@@ -226,6 +316,7 @@ fun MainScreen(
                     Button(
                         onClick = {
                             showSnippetsDialog = false
+                            newSnippetTitle = "code" + viewModel.getExtensionForLanguage(selectedLanguage)
                             showSaveSnippetDialog = true
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -233,7 +324,7 @@ fun MainScreen(
                     ) {
                         Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Save Current Code")
+                        Text("Save Current Code to Snippets")
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -292,13 +383,21 @@ fun MainScreen(
             onDismissRequest = { showSaveSnippetDialog = false },
             title = { Text("Save Snippet") },
             text = {
-                TextField(
-                    value = newSnippetTitle,
-                    onValueChange = { newSnippetTitle = it },
-                    placeholder = { Text("Snippet title (e.g. Binary Search)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column {
+                    Text(
+                        text = "File extension (${viewModel.getExtensionForLanguage(selectedLanguage)}) will be saved automatically.",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextField(
+                        value = newSnippetTitle,
+                        onValueChange = { newSnippetTitle = it },
+                        placeholder = { Text("e.g. solution${viewModel.getExtensionForLanguage(selectedLanguage)}") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             },
             confirmButton = {
                 Button(
@@ -345,40 +444,74 @@ fun MainScreen(
         )
     }
 
-    // Settings Dialog
+    // Settings Dialog with Fixed 18sp & Equal Balanced Width Pills
     if (showSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
             title = { Text("Settings", fontWeight = FontWeight.Bold) },
             text = {
-                Column {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text("Execution Timeout: ${timeoutSeconds}s", fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         listOf(5, 10, 20, 30).forEach { sec ->
-                            FilterChip(
-                                selected = timeoutSeconds == sec,
-                                onClick = { viewModel.setTimeout(sec) },
-                                label = { Text("${sec}s") },
-                                modifier = Modifier.padding(end = 6.dp)
-                            )
+                            val selected = timeoutSeconds == sec
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (selected) PrimaryBlue else Color(0xFF2D2D2D))
+                                    .clickable { viewModel.setTimeout(sec) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${sec}s",
+                                    fontSize = 13.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) Color.White else Color.LightGray,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Text("Editor Font Size: ${fontSizeSp.toInt()}sp", fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         listOf(12f, 14f, 16f, 18f).forEach { size ->
-                            FilterChip(
-                                selected = fontSizeSp == size,
-                                onClick = { viewModel.setFontSize(size) },
-                                label = { Text("${size.toInt()}sp") },
-                                modifier = Modifier.padding(end = 6.dp)
-                            )
+                            val selected = fontSizeSp == size
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (selected) PrimaryBlue else Color(0xFF2D2D2D))
+                                    .clickable { viewModel.setFontSize(size) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${size.toInt()}sp",
+                                    fontSize = 13.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) Color.White else Color.LightGray,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "OfflineCode is 100% offline, zero trackers, open source.",
                         color = Color.Gray,
@@ -427,4 +560,3 @@ fun PackItem(name: String, details: String, status: String) {
         }
     }
 }
-

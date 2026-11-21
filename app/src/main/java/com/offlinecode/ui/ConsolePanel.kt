@@ -11,6 +11,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
@@ -40,9 +42,16 @@ fun ConsolePanel(
     modifier: Modifier = Modifier
 ) {
     var stdinInput by remember { mutableStateOf("") }
+    var isExpanded by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
-    // Auto-scroll on new event
+    // Auto-expand and scroll on execution
+    LaunchedEffect(isRunning) {
+        if (isRunning) {
+            isExpanded = true
+        }
+    }
+
     LaunchedEffect(events.size) {
         if (events.isNotEmpty()) {
             listState.animateScrollToItem(events.size - 1)
@@ -52,18 +61,28 @@ fun ConsolePanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .height(if (isExpanded) 220.dp else 36.dp)
             .background(Color(0xFF181818))
     ) {
-        // Console Header
+        // Console Header (Click to Toggle Expand/Collapse)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(36.dp)
                 .background(Color(0xFF222222))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .clickable { isExpanded = !isExpanded }
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = Color.LightGray,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "CONSOLE",
                     fontSize = 12.sp,
@@ -83,6 +102,13 @@ fun ConsolePanel(
                         text = "Running...",
                         fontSize = 11.sp,
                         color = Color(0xFF007ACC)
+                    )
+                } else if (!isExpanded && events.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "• Tap to view output",
+                        fontSize = 11.sp,
+                        color = Color.Gray
                     )
                 }
             }
@@ -115,7 +141,8 @@ fun ConsolePanel(
             }
         }
 
-        Divider(color = Color(0xFF333333))
+        if (isExpanded) {
+            HorizontalDivider(color = Color(0xFF333333))
 
         // Output Area
         LazyColumn(
@@ -254,6 +281,7 @@ fun ConsolePanel(
                     modifier = Modifier.size(18.dp)
                 )
             }
+        }
         }
     }
 }

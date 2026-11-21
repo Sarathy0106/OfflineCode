@@ -49,15 +49,108 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _savedSnippets = MutableStateFlow<List<Snippet>>(emptyList())
     val savedSnippets = _savedSnippets.asStateFlow()
 
+    private val _currentFileName = MutableStateFlow<String?>(null)
+    val currentFileName = _currentFileName.asStateFlow()
+
     private val snippetsFile = File(application.filesDir, "snippets.json")
 
     init {
         loadSnippets()
     }
 
+    fun getExtensionForLanguage(lang: String): String = when (lang.lowercase()) {
+        "python" -> ".py"
+        "c" -> ".c"
+        "java" -> ".java"
+        "cpp" -> ".cpp"
+        else -> ".txt"
+    }
+
+    fun getDefaultFileName(): String = when (_selectedLanguage.value.lowercase()) {
+        "python" -> "main.py"
+        "c" -> "main.c"
+        "java" -> "Main.java"
+        "cpp" -> "main.cpp"
+        else -> "code.txt"
+    }
+
+    fun detectLanguageFromFileName(name: String): String {
+        val lower = name.lowercase()
+        return when {
+            lower.endsWith(".py") -> "python"
+            lower.endsWith(".c") || lower.endsWith(".h") -> "c"
+            lower.endsWith(".java") -> "java"
+            lower.endsWith(".cpp") || lower.endsWith(".cc") || lower.endsWith(".cxx") || lower.endsWith(".hpp") || lower.endsWith(".h++") -> "cpp"
+            else -> _selectedLanguage.value
+        }
+    }
+
+    fun openFileFromUri(context: android.content.Context, uri: android.net.Uri) {
+        try {
+            var fileName = if (uri.scheme == "file") {
+                File(uri.path ?: "").name
+            } else {
+                "unknown"
+            }
+
+            if (uri.scheme == "content") {
+                try {
+                    context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (nameIndex != -1 && cursor.moveToFirst()) {
+                            fileName = cursor.getString(nameIndex) ?: fileName
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            if (fileName == "unknown" || fileName.isEmpty()) {
+                fileName = uri.lastPathSegment ?: "code${getExtensionForLanguage(_selectedLanguage.value)}"
+            }
+
+            val text = if (uri.scheme == "file") {
+                File(uri.path ?: "").readText()
+            } else {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.bufferedReader().readText()
+                }
+            } ?: return
+
+            val detectedLang = detectLanguageFromFileName(fileName)
+            _selectedLanguage.value = detectedLang
+            _currentFileName.value = fileName
+            updateEditorValue(TextFieldValue(text, TextRange(0)))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun saveFileToUri(context: android.content.Context, uri: android.net.Uri) {
+        try {
+            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                stream.write(_editorValue.value.text.toByteArray(Charsets.UTF_8))
+            }
+            var fileName: String? = null
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1 && cursor.moveToFirst()) {
+                    fileName = cursor.getString(nameIndex)
+                }
+            }
+            if (fileName != null) {
+                _currentFileName.value = fileName
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     fun selectLanguage(lang: String) {
         if (_selectedLanguage.value != lang) {
             _selectedLanguage.value = lang
+            _currentFileName.value = null
             val template = TemplateManager.getTemplate(lang)
             updateEditorValue(TextFieldValue(template, TextRange(template.length)))
         }
@@ -94,9 +187,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val text = current.text
         val selection = current.selection
 
-        val newText = text.substring(0, selection.start) + symbol + text.substring(selection.end)
-        val newCursor = selection.start + symbol.length
-        onEditorChange(TextFieldValue(newText, TextRange(newCursor)))
+        val pairs = mapOf(
+            "{" to "}",
+            "(" to ")",
+            "[" to "]",
+            "\"" to "\"",
+            "'" to "'"
+        )
+
+        if (pairs.containsKey(symbol)) {
+            val close = pairs[symbol]!!
+            if (selection.length > 0) {
+                // Wrap selection
+                val selectedText = text.substring(selection.start, selection.end)
+                val newText = text.substring(0, selection.start) + symbol + selectedText + close + text.substring(selection.end)
+                val newCursor = selection.end + 2
+                onEditorChange(TextFieldValue(newText, TextRange(newCursor)))
+            } else {
+                // Insert pair with cursor in middle
+                val newText = text.substring(0, selection.start) + symbol + close + text.substring(selection.start)
+                val newCursor = selection.start + 1
+                onEditorChange(TextFieldValue(newText, TextRange(newCursor)))
+            }
+        } else {
+            val newText = text.substring(0, selection.start) + symbol + text.substring(selection.end)
+            val newCursor = selection.start + symbol.length
+            onEditorChange(TextFieldValue(newText, TextRange(newCursor)))
+        }
     }
 
     fun jumpToLine(line: Int, col: Int) {
@@ -159,9 +276,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun saveCurrentSnippet(title: String) {
+        val ext = getExtensionForLanguage(_selectedLanguage.value)
+        val cleanTitle = if (title.endsWith(ext, ignoreCase = true)) {
+            title
+        } else {
+            val baseName = if (title.contains('.')) title.substringBeforeLast('.') else title
+            baseName + ext
+        }
         val snippet = Snippet(
             id = System.currentTimeMillis().toString(),
-            title = title,
+            title = cleanTitle,
             language = _selectedLanguage.value,
             code = _editorValue.value.text
         )

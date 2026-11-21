@@ -53,23 +53,23 @@ fun SymbolRow(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(horizontal = 2.dp, vertical = 2.dp)
             .horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically
     ) {
         symbols.forEach { (label, value) ->
             Box(
                 modifier = Modifier
-                    .padding(horizontal = 3.dp)
+                    .padding(horizontal = 2.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(MaterialTheme.colorScheme.surface)
                     .clickable { onInsertSymbol(value) }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = label,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurface

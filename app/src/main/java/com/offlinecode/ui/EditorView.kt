@@ -36,30 +36,104 @@ fun EditorView(
     }
     val lineCount = remember(lines) { lines.size }
 
-    // Intercept Enter for auto-indent
+    // Handle auto-closing brackets, overtyping, auto-removal on backspace, and auto-indent
     fun handleTextChange(newValue: TextFieldValue) {
         val oldText = textFieldValue.text
         val newText = newValue.text
+        val oldSelection = textFieldValue.selection
+        val newSelection = newValue.selection
 
-        // Check if Enter was pressed (length increased by 1 and char at cursor-1 is '\n')
-        if (newText.length == oldText.length + 1 &&
-            newValue.selection.start > 0 &&
-            newText[newValue.selection.start - 1] == '\n'
-        ) {
-            val cursor = newValue.selection.start
-            val beforeCursor = newText.substring(0, cursor - 1)
-            val lastNewLine = beforeCursor.lastIndexOf('\n')
-            val prevLine = if (lastNewLine >= 0) beforeCursor.substring(lastNewLine + 1) else beforeCursor
+        // Case 1: Character insertion (length increased by 1)
+        if (newText.length == oldText.length + 1 && newSelection.start > 0) {
+            val insertedIndex = newSelection.start - 1
+            val insertedChar = newText[insertedIndex]
 
-            val leadingSpaces = prevLine.takeWhile { it == ' ' || it == '\t' }
-            val extraIndent = if (prevLine.trimEnd().endsWith("{") || prevLine.trimEnd().endsWith(":")) "    " else ""
-            val indentToAdd = leadingSpaces + extraIndent
+            // 1A: Enter key pressed
+            if (insertedChar == '\n') {
+                val cursor = newSelection.start
+                // Check if pressed between { and }
+                if (cursor - 2 >= 0 && cursor < newText.length &&
+                    newText[cursor - 2] == '{' && newText[cursor] == '}'
+                ) {
+                    val beforeCursor = newText.substring(0, cursor - 2)
+                    val lastNewLine = beforeCursor.lastIndexOf('\n')
+                    val prevLine = if (lastNewLine >= 0) beforeCursor.substring(lastNewLine + 1) else beforeCursor
+                    val baseIndent = prevLine.takeWhile { it == ' ' || it == '\t' }
+                    val innerIndent = baseIndent + "    "
 
-            if (indentToAdd.isNotEmpty()) {
-                val modifiedText = newText.substring(0, cursor) + indentToAdd + newText.substring(cursor)
-                val newCursor = cursor + indentToAdd.length
+                    val modified = newText.substring(0, cursor) + innerIndent + "\n" + baseIndent + newText.substring(cursor)
+                    val newCursor = cursor + innerIndent.length
+                    onValueChange(TextFieldValue(modified, TextRange(newCursor)))
+                    return
+                }
+
+                // Standard auto-indent
+                val beforeCursor = newText.substring(0, cursor - 1)
+                val lastNewLine = beforeCursor.lastIndexOf('\n')
+                val prevLine = if (lastNewLine >= 0) beforeCursor.substring(lastNewLine + 1) else beforeCursor
+
+                val leadingSpaces = prevLine.takeWhile { it == ' ' || it == '\t' }
+                val extraIndent = if (prevLine.trimEnd().endsWith("{") || prevLine.trimEnd().endsWith(":")) "    " else ""
+                val indentToAdd = leadingSpaces + extraIndent
+
+                if (indentToAdd.isNotEmpty()) {
+                    val modifiedText = newText.substring(0, cursor) + indentToAdd + newText.substring(cursor)
+                    val newCursor = cursor + indentToAdd.length
+                    onValueChange(TextFieldValue(modifiedText, TextRange(newCursor)))
+                    return
+                }
+            }
+
+            // 1B: Overtyping closing character
+            val closingChars = setOf(')', ']', '}', '"', '\'')
+            if (closingChars.contains(insertedChar)) {
+                if (oldSelection.collapsed && oldSelection.start < oldText.length &&
+                    oldText[oldSelection.start] == insertedChar
+                ) {
+                    onValueChange(TextFieldValue(oldText, TextRange(oldSelection.start + 1)))
+                    return
+                }
+            }
+
+            // 1C: Auto-closing opening brackets and quotes
+            val pairMap = mapOf(
+                '(' to ')',
+                '[' to ']',
+                '{' to '}',
+                '"' to '"',
+                '\'' to '\''
+            )
+            if (pairMap.containsKey(insertedChar)) {
+                val matchingClose = pairMap[insertedChar]!!
+                val modifiedText = newText.substring(0, insertedIndex + 1) + matchingClose + newText.substring(insertedIndex + 1)
+                val newCursor = insertedIndex + 1
                 onValueChange(TextFieldValue(modifiedText, TextRange(newCursor)))
                 return
+            }
+        }
+
+        // Case 2: Backspace character deletion (length decreased by 1)
+        if (newText.length == oldText.length - 1 && oldSelection.collapsed) {
+            val deletedIndex = newSelection.start
+            if (deletedIndex < oldText.length) {
+                val deletedChar = oldText[deletedIndex]
+                val nextChar = if (deletedIndex + 1 < oldText.length) oldText[deletedIndex + 1] else null
+
+                val isPair = when (deletedChar) {
+                    '(' -> nextChar == ')'
+                    '[' -> nextChar == ']'
+                    '{' -> nextChar == '}'
+                    '"' -> nextChar == '"'
+                    '\'' -> nextChar == '\''
+                    else -> false
+                }
+
+                if (isPair) {
+                    // Auto-remove matching closing bracket too
+                    val modifiedText = newText.substring(0, deletedIndex) + newText.substring(deletedIndex + 1)
+                    onValueChange(TextFieldValue(modifiedText, TextRange(deletedIndex)))
+                    return
+                }
             }
         }
 
@@ -76,7 +150,7 @@ fun EditorView(
         Column(
             modifier = Modifier
                 .background(DarkGutter)
-                .padding(horizontal = 10.dp, vertical = 12.dp)
+                .padding(horizontal = 6.dp, vertical = 6.dp)
         ) {
             for (i in 1..maxOf(1, lineCount)) {
                 Text(
@@ -89,7 +163,7 @@ fun EditorView(
             }
         }
 
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(4.dp))
 
         // Editor Input Area
         BasicTextField(
@@ -97,7 +171,7 @@ fun EditorView(
             onValueChange = ::handleTextChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 6.dp),
+                .padding(vertical = 6.dp, horizontal = 4.dp),
             textStyle = TextStyle(
                 fontFamily = FontFamily.Monospace,
                 fontSize = fontSizeSp.sp,
