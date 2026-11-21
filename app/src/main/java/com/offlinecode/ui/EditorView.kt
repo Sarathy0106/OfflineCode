@@ -5,11 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -17,8 +15,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.offlinecode.ui.theme.DarkGutter
-import com.offlinecode.ui.theme.DarkLineNumber
+import com.offlinecode.ui.theme.EditorTheme
 
 @Composable
 fun EditorView(
@@ -26,10 +23,14 @@ fun EditorView(
     onValueChange: (TextFieldValue) -> Unit,
     language: String,
     fontSizeSp: Float,
+    theme: EditorTheme = EditorTheme.ONE_DARK,
+    searchQuery: String = "",
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    val highlighter = remember(language) { SyntaxHighlighter(language) }
+    val highlighter = remember(language, theme, searchQuery) {
+        SyntaxHighlighter(language, theme, searchQuery)
+    }
 
     val lines = remember(textFieldValue.text) {
         textFieldValue.text.lines()
@@ -143,19 +144,19 @@ fun EditorView(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
+            .background(theme.background)
             .verticalScroll(scrollState)
     ) {
         // Line Numbers Gutter
         Column(
             modifier = Modifier
-                .background(DarkGutter)
+                .background(theme.gutterBackground)
                 .padding(horizontal = 6.dp, vertical = 6.dp)
         ) {
             for (i in 1..maxOf(1, lineCount)) {
                 Text(
                     text = "$i",
-                    color = DarkLineNumber,
+                    color = theme.lineNumberColor,
                     fontFamily = FontFamily.Monospace,
                     fontSize = fontSizeSp.sp,
                     lineHeight = (fontSizeSp * 1.45f).sp
@@ -176,9 +177,9 @@ fun EditorView(
                 fontFamily = FontFamily.Monospace,
                 fontSize = fontSizeSp.sp,
                 lineHeight = (fontSizeSp * 1.45f).sp,
-                color = MaterialTheme.colorScheme.onBackground
+                color = androidx.compose.ui.graphics.Color(0xFFD4D4D4)
             ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            cursorBrush = SolidColor(theme.keywordColor),
             visualTransformation = highlighter
         )
     }

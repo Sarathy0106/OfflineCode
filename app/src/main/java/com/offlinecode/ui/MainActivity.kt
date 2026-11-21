@@ -11,6 +11,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.offlinecode.core.Snippet
+import com.offlinecode.ui.theme.EditorTheme
 import com.offlinecode.ui.theme.OfflineCodeTheme
 import com.offlinecode.ui.theme.PrimaryBlue
 
@@ -113,6 +115,17 @@ fun MainScreen(
     val timeoutSeconds by viewModel.timeoutSeconds.collectAsState()
     val savedSnippets by viewModel.savedSnippets.collectAsState()
     val currentFileName by viewModel.currentFileName.collectAsState()
+    val selectedTheme by viewModel.selectedTheme.collectAsState()
+    val cppOptimization by viewModel.cppOptimization.collectAsState()
+    val cppWarnings by viewModel.cppWarnings.collectAsState()
+
+    // Find & Replace
+    val isSearchOpen by viewModel.isSearchOpen.collectAsState()
+    val isReplaceOpen by viewModel.isReplaceOpen.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val replaceQuery by viewModel.replaceQuery.collectAsState()
+    val matchIndices by viewModel.matchIndices.collectAsState()
+    val currentMatchIndex by viewModel.currentMatchIndex.collectAsState()
 
     var showSnippetsDialog by remember { mutableStateOf(false) }
     var showPacksDialog by remember { mutableStateOf(false) }
@@ -189,7 +202,7 @@ fun MainScreen(
                     }
                 }
 
-                // Compact Actions
+                // Compact Action Buttons
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CompactIconButton(onClick = { viewModel.undo() }, icon = Icons.AutoMirrored.Filled.Undo, desc = "Undo")
                     CompactIconButton(onClick = { viewModel.redo() }, icon = Icons.AutoMirrored.Filled.Redo, desc = "Redo")
@@ -216,7 +229,7 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Secondary Control Bar: Language selector and Run/Stop button (Height: 38dp)
+            // Secondary Control Bar: Language selector, Search/Format actions, and Run/Stop button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -226,8 +239,11 @@ fun MainScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // Language Chips
                 Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .horizontalScroll(rememberScrollState()),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     languages.forEach { (id, label) ->
@@ -238,7 +254,7 @@ fun MainScreen(
                                 .clip(RoundedCornerShape(5.dp))
                                 .background(if (isSelected) PrimaryBlue else Color(0xFF333333))
                                 .clickable { viewModel.selectLanguage(id) }
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                .padding(horizontal = 9.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = label,
@@ -250,31 +266,71 @@ fun MainScreen(
                     }
                 }
 
-                if (isRunning) {
-                    Button(
-                        onClick = { viewModel.stopCode() },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
-                        shape = RoundedCornerShape(5.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        modifier = Modifier.height(28.dp)
-                    ) {
-                        Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Stop", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                } else {
-                    Button(
-                        onClick = { viewModel.runCode() },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                        shape = RoundedCornerShape(5.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        modifier = Modifier.height(28.dp)
-                    ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Run", modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Run", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                // Quick Tools & Run / Stop Button
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Find & Replace Toggle
+                    CompactIconButton(
+                        onClick = { viewModel.toggleSearch() },
+                        icon = Icons.Default.Search,
+                        desc = "Find and Replace",
+                        tint = if (isSearchOpen) PrimaryBlue else Color.LightGray
+                    )
+
+                    // Format Code Action
+                    CompactIconButton(
+                        onClick = { viewModel.formatCode() },
+                        icon = Icons.Default.AutoFixHigh,
+                        desc = "Auto Format Code",
+                        tint = Color.LightGray
+                    )
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    if (isRunning) {
+                        Button(
+                            onClick = { viewModel.stopCode() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                            shape = RoundedCornerShape(5.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Stop", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Button(
+                            onClick = { viewModel.runCode() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                            shape = RoundedCornerShape(5.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Run", modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Run", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
+            }
+
+            // Find & Replace Bar (Collapsible)
+            if (isSearchOpen) {
+                SearchBar(
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+                    replaceQuery = replaceQuery,
+                    onReplaceQueryChange = { viewModel.updateReplaceQuery(it) },
+                    isReplaceOpen = isReplaceOpen,
+                    onToggleReplace = { viewModel.toggleReplace() },
+                    matchCount = matchIndices.size,
+                    currentMatchIndex = currentMatchIndex,
+                    onFindNext = { viewModel.findNext() },
+                    onFindPrevious = { viewModel.findPrevious() },
+                    onReplaceCurrent = { viewModel.replaceCurrent() },
+                    onReplaceAll = { viewModel.replaceAll() },
+                    onClose = { viewModel.toggleSearch(false) }
+                )
             }
 
             // Editor Pane (Occupies maximum available space)
@@ -283,17 +339,22 @@ fun MainScreen(
                 onValueChange = { viewModel.onEditorChange(it) },
                 language = selectedLanguage,
                 fontSizeSp = fontSizeSp,
+                theme = selectedTheme,
+                searchQuery = if (isSearchOpen) searchQuery else "",
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
             )
 
-            // Symbol Row (Keyboard accessory)
+            // Symbol Row (Keyboard accessory with quick comment & format)
             SymbolRow(
-                onInsertSymbol = { symbol -> viewModel.insertSymbol(symbol) }
+                language = selectedLanguage,
+                onInsertSymbol = { symbol -> viewModel.insertSymbol(symbol) },
+                onToggleComment = { viewModel.toggleComment() },
+                onFormatCode = { viewModel.formatCode() }
             )
 
-            // Collapsible Console Panel
+            // Collapsible Console Panel with Live Execution Stats
             ConsolePanel(
                 events = runEvents,
                 isRunning = isRunning,
@@ -444,13 +505,50 @@ fun MainScreen(
         )
     }
 
-    // Settings Dialog with Fixed 18sp & Equal Balanced Width Pills
+    // Comprehensive Settings Dialog: Themes, Timeout, Font Size, Compiler Flags
     if (showSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
             title = { Text("Settings", fontWeight = FontWeight.Bold) },
             text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // 1. Editor Color Theme
+                    Text("Editor Theme", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        EditorTheme.entries.forEach { theme ->
+                            val selected = selectedTheme == theme
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (selected) PrimaryBlue else Color(0xFF2D2D2D))
+                                    .clickable { viewModel.setTheme(theme) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = theme.displayName,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) Color.White else Color.LightGray,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 2. Execution Timeout
                     Text("Execution Timeout: ${timeoutSeconds}s", fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(
@@ -480,8 +578,9 @@ fun MainScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
+                    // 3. Editor Font Size
                     Text("Editor Font Size: ${fontSizeSp.toInt()}sp", fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(
@@ -502,6 +601,70 @@ fun MainScreen(
                                 Text(
                                     text = "${size.toInt()}sp",
                                     fontSize = 13.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) Color.White else Color.LightGray,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 4. C/C++ Compiler Optimization Flags
+                    Text("C/C++ Optimization Flag", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("-O0" to "-O0 (Debug)", "-O2" to "-O2 (Fast)").forEach { (flag, label) ->
+                            val selected = cppOptimization == flag
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (selected) PrimaryBlue else Color(0xFF2D2D2D))
+                                    .clickable { viewModel.setCppOptimization(flag) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) Color.White else Color.LightGray,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 5. C/C++ Warnings Flag
+                    Text("C/C++ Compiler Warnings (-Wall)", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(false to "Standard", true to "-Wall (Strict)").forEach { (enabled, label) ->
+                            val selected = cppWarnings == enabled
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (selected) PrimaryBlue else Color(0xFF2D2D2D))
+                                    .clickable { viewModel.setCppWarnings(enabled) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
                                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                                     color = if (selected) Color.White else Color.LightGray,
                                     maxLines = 1,

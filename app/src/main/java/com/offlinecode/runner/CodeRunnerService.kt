@@ -89,8 +89,12 @@ class CodeRunnerService : Service() {
             activeRunJob = serviceScope.launch {
                 runExecutor.execute {
                     var exitCode = 0
+                    val baseLang = language.substringBefore('?').lowercase()
+                    val optLevel = if (language.contains("opt=-O0")) "-O0" else "-O2"
+                    val warnings = language.contains("wall=true")
+
                     try {
-                        when (language.lowercase()) {
+                        when (baseLang) {
                             "c" -> {
                                 if (cEngine == null) cEngine = CEngine(applicationContext)
                                 exitCode = cEngine!!.run(sourceCode, callback)
@@ -105,7 +109,7 @@ class CodeRunnerService : Service() {
                             }
                             "cpp" -> {
                                 if (cppEngine == null) cppEngine = CppEngine(applicationContext)
-                                exitCode = cppEngine!!.run(sourceCode, callback)
+                                exitCode = cppEngine!!.run(sourceCode, callback, optLevel, warnings)
                             }
                             else -> {
                                 callback.onStderr("Unsupported language: $language\n")

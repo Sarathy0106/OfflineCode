@@ -102,7 +102,7 @@ class CppEngine(private val context: Context) {
         }
     }
 
-    fun run(sourceCode: String, callback: IRunnerCallback): Int {
+    fun run(sourceCode: String, callback: IRunnerCallback, optLevel: String = "-O2", warnings: Boolean = false): Int {
         val nativeLibDir = context.applicationInfo.nativeLibraryDir
         val clangBin = File(nativeLibDir, "libclang_exec.so")
 
@@ -120,11 +120,17 @@ class CppEngine(private val context: Context) {
             srcFile.writeText(sourceCode)
 
             // 2. Compile via Clang process
-            val cmd = listOf(
+            val cmd = mutableListOf(
                 clangBin.absolutePath,
                 "-shared",
                 "-fPIC",
                 "-std=c++17",
+                optLevel
+            )
+            if (warnings) {
+                cmd.add("-Wall")
+            }
+            cmd.addAll(listOf(
                 "-resource-dir", clangResourceDir.absolutePath,
                 "-I${includeDir.absolutePath}/c++/v1",
                 "-I${includeDir.absolutePath}",
@@ -137,7 +143,7 @@ class CppEngine(private val context: Context) {
                 "-lc++_shared",
                 srcFile.absolutePath,
                 "-o", outFile.absolutePath
-            )
+            ))
 
             val pb = ProcessBuilder(cmd)
             pb.directory(workspaceDir)

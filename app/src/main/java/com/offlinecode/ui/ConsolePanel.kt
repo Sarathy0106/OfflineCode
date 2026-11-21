@@ -10,15 +10,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -29,7 +30,6 @@ import com.offlinecode.core.RunEvent
 import com.offlinecode.ui.theme.ConsoleStderr
 import com.offlinecode.ui.theme.ConsoleStdout
 import com.offlinecode.ui.theme.ConsoleSuccess
-import com.offlinecode.ui.theme.DarkSurfaceVariant
 
 @Composable
 fun ConsolePanel(
@@ -44,6 +44,10 @@ fun ConsolePanel(
     var stdinInput by remember { mutableStateOf("") }
     var isExpanded by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+
+    val lastExit = remember(events) {
+        events.findLast { it is RunEvent.Exit } as? RunEvent.Exit
+    }
 
     // Auto-expand and scroll on execution
     LaunchedEffect(isRunning) {
@@ -90,6 +94,7 @@ fun ConsolePanel(
                     color = Color.LightGray,
                     letterSpacing = 1.sp
                 )
+
                 if (isRunning) {
                     Spacer(modifier = Modifier.width(8.dp))
                     CircularProgressIndicator(
@@ -103,10 +108,26 @@ fun ConsolePanel(
                         fontSize = 11.sp,
                         color = Color(0xFF007ACC)
                     )
+                } else if (lastExit != null) {
+                    // Execution Stats badge
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (lastExit.code == 0) Color(0xFF1B5E20) else Color(0xFFB71C1C))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = if (lastExit.code == 0) "✓ ${lastExit.millis}ms" else "Exit ${lastExit.code} (${lastExit.millis}ms)",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 } else if (!isExpanded && events.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "• Tap to view output",
+                        text = "• Tap to view",
                         fontSize = 11.sp,
                         color = Color.Gray
                     )
@@ -144,144 +165,144 @@ fun ConsolePanel(
         if (isExpanded) {
             HorizontalDivider(color = Color(0xFF333333))
 
-        // Output Area
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            if (events.isEmpty()) {
-                item {
-                    Text(
-                        text = "Tap 'Run' to compile and execute offline.",
-                        color = Color.DarkGray,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+            // Output Area
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                if (events.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Tap 'Run' to compile and execute offline.",
+                            color = Color.DarkGray,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
                 }
-            }
 
-            items(events) { event ->
-                when (event) {
-                    is RunEvent.Stdout -> {
-                        Text(
-                            text = event.text,
-                            color = ConsoleStdout,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp
-                        )
-                    }
-                    is RunEvent.Stderr -> {
-                        Text(
-                            text = event.text,
-                            color = ConsoleStderr,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp
-                        )
-                    }
-                    is RunEvent.CompileError -> {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 2.dp)
-                                .clickable { onJumpToLine(event.line, event.col) }
-                        ) {
+                items(events) { event ->
+                    when (event) {
+                        is RunEvent.Stdout -> {
                             Text(
-                                text = "Line ${event.line}:${event.col}: ",
-                                color = Color(0xFFCCA700),
-                                fontWeight = FontWeight.Bold,
+                                text = event.text,
+                                color = ConsoleStdout,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 13.sp
                             )
+                        }
+                        is RunEvent.Stderr -> {
                             Text(
-                                text = event.msg,
+                                text = event.text,
                                 color = ConsoleStderr,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 13.sp
                             )
                         }
-                    }
-                    is RunEvent.Exit -> {
-                        Text(
-                            text = "\n[Process exited with code ${event.code} in ${event.millis}ms]",
-                            color = if (event.code == 0) ConsoleSuccess else ConsoleStderr,
-                            fontWeight = FontWeight.SemiBold,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
+                        is RunEvent.CompileError -> {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp)
+                                    .clickable { onJumpToLine(event.line, event.col) }
+                            ) {
+                                Text(
+                                    text = "Line ${event.line}:${event.col}: ",
+                                    color = Color(0xFFCCA700),
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = event.msg,
+                                    color = ConsoleStderr,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                        is RunEvent.Exit -> {
+                            Text(
+                                text = "\n[Process exited with code ${event.code} in ${event.millis}ms]",
+                                color = if (event.code == 0) ConsoleSuccess else ConsoleStderr,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        // Stdin Interactive Input Field
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF222222))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextField(
-                value = stdinInput,
-                onValueChange = { stdinInput = it },
-                placeholder = {
-                    Text(
-                        text = "Enter stdin input...",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-                },
+            // Stdin Interactive Input Field
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
-                    color = Color.White
-                ),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = {
-                    if (stdinInput.isNotEmpty()) {
-                        onSendStdin("$stdinInput\n")
-                        stdinInput = ""
-                    }
-                }),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFF1E1E1E),
-                    unfocusedContainerColor = Color(0xFF1E1E1E),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                shape = RoundedCornerShape(6.dp)
-            )
-
-            Spacer(modifier = Modifier.width(6.dp))
-
-            IconButton(
-                onClick = {
-                    if (stdinInput.isNotEmpty()) {
-                        onSendStdin("$stdinInput\n")
-                        stdinInput = ""
-                    }
-                },
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(Color(0xFF007ACC), RoundedCornerShape(6.dp))
+                    .fillMaxWidth()
+                    .background(Color(0xFF222222))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Send,
-                    contentDescription = "Send stdin",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
+                TextField(
+                    value = stdinInput,
+                    onValueChange = { stdinInput = it },
+                    placeholder = {
+                        Text(
+                            text = "Enter stdin input...",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 13.sp,
+                        color = Color.White
+                    ),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = {
+                        if (stdinInput.isNotEmpty()) {
+                            onSendStdin("$stdinInput\n")
+                            stdinInput = ""
+                        }
+                    }),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFF1E1E1E),
+                        unfocusedContainerColor = Color(0xFF1E1E1E),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(6.dp)
                 )
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                IconButton(
+                    onClick = {
+                        if (stdinInput.isNotEmpty()) {
+                            onSendStdin("$stdinInput\n")
+                            stdinInput = ""
+                        }
+                    },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFF007ACC), RoundedCornerShape(6.dp))
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Send stdin",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
-        }
         }
     }
 }
