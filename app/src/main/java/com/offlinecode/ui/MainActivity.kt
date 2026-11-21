@@ -89,13 +89,13 @@ fun CompactIconButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = modifier.size(34.dp)
+        modifier = modifier.size(32.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = desc,
             tint = tint,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(17.dp)
         )
     }
 }
@@ -165,7 +165,7 @@ fun MainScreen(
                     .background(Color(0xFF1E1E1E))
                     .statusBarsPadding()
                     .height(46.dp)
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -177,7 +177,7 @@ fun MainScreen(
                     Text(
                         text = "OfflineCode",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         color = Color.White,
                         maxLines = 1,
                         softWrap = false
