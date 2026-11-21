@@ -59,7 +59,7 @@ class PythonEngine(private val context: Context) {
 
     private fun extractPythonStdlib(destDir: File) {
         val is64Bit = Build.SUPPORTED_ABIS.isNotEmpty() && Build.SUPPORTED_ABIS[0].contains("64")
-        val assetName = if (is64Bit) "python/pythonhome_arm64.zip" else "python/pythonhome_arm.zip"
+        val assetName = "python/pythonhome_arm64.zip"
 
         try {
             context.assets.open(assetName).use { assetStream ->

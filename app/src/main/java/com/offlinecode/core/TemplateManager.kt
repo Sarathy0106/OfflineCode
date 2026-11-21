@@ -36,9 +36,28 @@ public class Main {
 """.trimIndent()
 
             "cpp" -> """#include <iostream>
+using namespace std;
 
 int main() {
-    std::cout << "Hello from C++!" << std::endl;
+    int num, flag = 0;
+    cin >> num;
+
+    if (num <= 1) {
+        cout << "It is not prime number";
+    } else {
+        for (int i = 2; i < num; i++) {
+            if (num % i == 0) {
+                flag++;
+                break;
+            }
+        }
+    }
+
+    if (flag == 0) {
+        cout << num << " is prime number";
+    } else {
+        cout << num << " is not prime number";
+    }
     return 0;
 }
 """.trimIndent()

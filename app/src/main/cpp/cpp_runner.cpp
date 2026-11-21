@@ -3,6 +3,7 @@
 #include <dlfcn.h>
 #include <android/log.h>
 #include <cstdio>
+#include <iostream>
 #include "pipe_manager.h"
 
 #define TAG "OfflineCode-CppRunner"
@@ -115,10 +116,15 @@ Java_com_offlinecode_runner_engines_CppNativeBridge_runSharedLibrary(
     char arg0[] = "user_cpp";
     char *argv[] = { arg0, nullptr };
 
+    std::ios::sync_with_stdio(true);
+    std::cin.clear();
+    std::cout.clear();
+
     LOGD("Invoking C++ main...");
     int exitCode = user_main(argc, argv);
     LOGD("C++ main returned: %d", exitCode);
 
+    std::cout.flush();
     fflush(stdout);
     fflush(stderr);
 

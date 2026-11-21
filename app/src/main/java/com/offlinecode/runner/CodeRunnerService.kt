@@ -38,7 +38,8 @@ class CodeRunnerService : Service() {
             memoryLimitMb: Int,
             callback: IRunnerCallback
         ) {
-            activeLanguage = language
+            val baseLang = language.substringBefore('?').lowercase()
+            activeLanguage = baseLang
             val startTime = System.currentTimeMillis()
 
             // Setup Watchdog: Timeout and Memory Limits
@@ -135,7 +136,7 @@ class CodeRunnerService : Service() {
         }
 
         override fun sendStdin(input: String) {
-            when (activeLanguage?.lowercase()) {
+            when (activeLanguage?.substringBefore('?')?.lowercase()) {
                 "c" -> cEngine?.writeStdin(input)
                 "cpp" -> cppEngine?.writeStdin(input)
                 "python" -> pythonEngine?.writeStdin(input)

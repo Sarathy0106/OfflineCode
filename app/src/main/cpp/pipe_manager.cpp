@@ -31,11 +31,13 @@ bool PipeManager::start(std::function<void(const std::string&)> stdoutCallback,
         return false;
     }
 
-    // Set stdout & stderr to unbuffered
+    // Set stdout, stderr & stdin to unbuffered
     fflush(stdout);
     fflush(stderr);
     setvbuf(stdout, nullptr, _IONBF, 0);
     setvbuf(stderr, nullptr, _IONBF, 0);
+    setvbuf(stdin, nullptr, _IONBF, 0);
+    clearerr(stdin);
 
     // Redirect
     dup2(m_stdout_pipe[1], STDOUT_FILENO);
