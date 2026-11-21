@@ -26,8 +26,24 @@ class CodeRunnerService : Service() {
     private var watchdogJob: Job? = null
     private var activeRunJob: Job? = null
 
+    @Volatile
+    private var isExecutionPhase = false
+    @Volatile
+    private var lastInteractiveTime = 0L
+
     override fun onCreate() {
         super.onCreate()
+        // Pre-warm / extract toolchain assets in background so first run on clean install is instant
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                if (cEngine == null) cEngine = CEngine(applicationContext)
+                if (pythonEngine == null) pythonEngine = PythonEngine(applicationContext)
+                if (javaEngine == null) javaEngine = JavaEngine(applicationContext)
+                if (cppEngine == null) cppEngine = CppEngine(applicationContext)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     private val binder = object : IRunnerService.Stub() {
@@ -41,31 +57,48 @@ class CodeRunnerService : Service() {
             val baseLang = language.substringBefore('?').lowercase()
             activeLanguage = baseLang
             val startTime = System.currentTimeMillis()
+            isExecutionPhase = false
+            lastInteractiveTime = startTime
 
             // Setup Watchdog: Timeout and Memory Limits
             watchdogJob?.cancel()
             watchdogJob = serviceScope.launch {
-                val effectiveTimeout = if (timeoutSeconds > 0) timeoutSeconds else 10
+                val effectiveTimeout = if (timeoutSeconds > 0) timeoutSeconds else 30
                 val effectiveMemoryLimit = if (memoryLimitMb > 0) memoryLimitMb else 256
 
                 val checkIntervalMs = 250L
-                var elapsedMs = 0L
+                val maxCompileTimeMs = 60_000L // 60s safety ceiling for extraction/compilation on slow devices
 
                 while (isActive) {
                     delay(checkIntervalMs)
-                    elapsedMs += checkIntervalMs
+                    val now = System.currentTimeMillis()
 
-                    // Check Timeout
-                    if (elapsedMs >= effectiveTimeout * 1000L) {
-                        try {
-                            callback.onStderr("\n[Process killed: Execution timed out after ${effectiveTimeout}s]\n")
-                            callback.onExit(-1, System.currentTimeMillis() - startTime)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+                    if (!isExecutionPhase) {
+                        // In toolchain extraction or compilation phase
+                        if (now - startTime >= maxCompileTimeMs) {
+                            try {
+                                callback.onStderr("\n[Process killed: Compilation timed out after 60s]\n")
+                                callback.onExit(-1, now - startTime)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                            Process.killProcess(Process.myPid())
+                            return@launch
                         }
-                        // Terminate process to cleanly unblock infinite loops
-                        Process.killProcess(Process.myPid())
-                        return@launch
+                    } else {
+                        // In code execution phase: count elapsed time since execution started or last stdin interaction
+                        val executionElapsedMs = now - lastInteractiveTime
+                        if (executionElapsedMs >= effectiveTimeout * 1000L) {
+                            try {
+                                callback.onStderr("\n[Process killed: Execution timed out after ${effectiveTimeout}s]\n")
+                                callback.onExit(-1, now - startTime)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                            // Terminate process to cleanly unblock infinite loops
+                            Process.killProcess(Process.myPid())
+                            return@launch
+                        }
                     }
 
                     // Check Memory Usage
@@ -91,25 +124,33 @@ class CodeRunnerService : Service() {
                 runExecutor.execute {
                     var exitCode = 0
                     val baseLang = language.substringBefore('?').lowercase()
-                    val optLevel = if (language.contains("opt=-O0")) "-O0" else "-O2"
+                    val optLevel = if (language.contains("opt=-O2")) "-O2" else "-O0"
                     val warnings = language.contains("wall=true")
 
                     try {
                         when (baseLang) {
                             "c" -> {
                                 if (cEngine == null) cEngine = CEngine(applicationContext)
+                                isExecutionPhase = true
+                                lastInteractiveTime = System.currentTimeMillis()
                                 exitCode = cEngine!!.run(sourceCode, callback)
                             }
                             "python" -> {
                                 if (pythonEngine == null) pythonEngine = PythonEngine(applicationContext)
+                                isExecutionPhase = true
+                                lastInteractiveTime = System.currentTimeMillis()
                                 exitCode = pythonEngine!!.run(sourceCode, callback)
                             }
                             "java" -> {
                                 if (javaEngine == null) javaEngine = JavaEngine(applicationContext)
+                                isExecutionPhase = true
+                                lastInteractiveTime = System.currentTimeMillis()
                                 exitCode = javaEngine!!.run(sourceCode, callback)
                             }
                             "cpp" -> {
                                 if (cppEngine == null) cppEngine = CppEngine(applicationContext)
+                                isExecutionPhase = true
+                                lastInteractiveTime = System.currentTimeMillis()
                                 exitCode = cppEngine!!.run(sourceCode, callback, optLevel, warnings)
                             }
                             else -> {
@@ -136,6 +177,7 @@ class CodeRunnerService : Service() {
         }
 
         override fun sendStdin(input: String) {
+            lastInteractiveTime = System.currentTimeMillis()
             when (activeLanguage?.substringBefore('?')?.lowercase()) {
                 "c" -> cEngine?.writeStdin(input)
                 "cpp" -> cppEngine?.writeStdin(input)

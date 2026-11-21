@@ -115,6 +115,7 @@ class CppEngine(private val context: Context) {
         val timestamp = System.currentTimeMillis()
         val srcFile = File(workspaceDir, "code_$timestamp.cpp")
         val outFile = File(workspaceDir, "libuser_$timestamp.so")
+        val lldNative = File(nativeLibDir, "liblld_exec.so")
 
         try {
             srcFile.writeText(sourceCode)
@@ -129,6 +130,10 @@ class CppEngine(private val context: Context) {
             )
             if (warnings) {
                 cmd.add("-Wall")
+            }
+            if (lldNative.exists()) {
+                cmd.add("-fuse-ld=lld")
+                cmd.add("--ld-path=${lldNative.absolutePath}")
             }
             cmd.addAll(listOf(
                 "-resource-dir", clangResourceDir.absolutePath,

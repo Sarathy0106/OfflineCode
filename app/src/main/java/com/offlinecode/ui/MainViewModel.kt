@@ -44,7 +44,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _fontSizeSp = MutableStateFlow(14f)
     val fontSizeSp = _fontSizeSp.asStateFlow()
 
-    private val _timeoutSeconds = MutableStateFlow(10)
+    private val _timeoutSeconds = MutableStateFlow(30)
     val timeoutSeconds = _timeoutSeconds.asStateFlow()
 
     private val _savedSnippets = MutableStateFlow<List<Snippet>>(emptyList())
@@ -57,8 +57,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedTheme = MutableStateFlow(EditorTheme.ONE_DARK)
     val selectedTheme = _selectedTheme.asStateFlow()
 
-    // Compiler Options State
-    private val _cppOptimization = MutableStateFlow("-O2")
+    // Compiler Options State (default -O0 for instant, fast compilation on mobile devices)
+    private val _cppOptimization = MutableStateFlow("-O0")
     val cppOptimization = _cppOptimization.asStateFlow()
 
     private val _cppWarnings = MutableStateFlow(false)

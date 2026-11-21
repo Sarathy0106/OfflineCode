@@ -555,7 +555,7 @@ fun MainScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        listOf(5, 10, 20, 30).forEach { sec ->
+                        listOf(10, 20, 30, 60).forEach { sec ->
                             val selected = timeoutSeconds == sec
                             Box(
                                 modifier = Modifier
