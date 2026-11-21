@@ -24,14 +24,24 @@ class JavaEngine(private val context: Context) {
 
     @Volatile
     private var currentStdinOutput: PipedOutputStream? = null
+    private val pendingStdin = StringBuilder()
 
-    fun run(sourceCode: String, callback: IRunnerCallback): Int {
+    fun run(sourceCode: String, callback: IRunnerCallback, onExecutionStart: (() -> Unit)? = null): Int {
         val workDir = File(context.cacheDir, "java_run_${System.currentTimeMillis()}")
         workDir.mkdirs()
 
         val pipeOut = PipedOutputStream()
         val pipeIn = PipedInputStream(pipeOut)
-        currentStdinOutput = pipeOut
+        synchronized(this) {
+            currentStdinOutput = pipeOut
+            if (pendingStdin.isNotEmpty()) {
+                try {
+                    pipeOut.write(pendingStdin.toString().toByteArray())
+                    pipeOut.flush()
+                } catch (ignored: Exception) {}
+                pendingStdin.clear()
+            }
+        }
 
         try {
             // Determine class name from source code
@@ -152,6 +162,8 @@ class JavaEngine(private val context: Context) {
             System.setErr(customErr)
             System.setIn(pipeIn)
 
+            onExecutionStart?.invoke()
+
             try {
                 mainMethod.invoke(null, arrayOf<String>())
             } catch (t: Throwable) {
@@ -175,17 +187,27 @@ class JavaEngine(private val context: Context) {
         } finally {
             try { pipeOut.close() } catch (ignored: Exception) {}
             try { pipeIn.close() } catch (ignored: Exception) {}
-            currentStdinOutput = null
+            synchronized(this) {
+                currentStdinOutput = null
+                pendingStdin.clear()
+            }
             workDir.deleteRecursively()
         }
     }
 
     fun writeStdin(input: String) {
-        try {
-            currentStdinOutput?.write(input.toByteArray())
-            currentStdinOutput?.flush()
-        } catch (e: Exception) {
-            e.printStackTrace()
+        synchronized(this) {
+            val out = currentStdinOutput
+            if (out != null) {
+                try {
+                    out.write(input.toByteArray())
+                    out.flush()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            } else {
+                pendingStdin.append(input)
+            }
         }
     }
 

@@ -44,7 +44,20 @@ bool PipeManager::start(std::function<void(const std::string&)> stdoutCallback,
     dup2(m_stderr_pipe[1], STDERR_FILENO);
     dup2(m_stdin_pipe[0], STDIN_FILENO);
 
+    // Ensure stdin error flags are cleared after redirection
+    clearerr(stdin);
+    setvbuf(stdin, nullptr, _IONBF, 0);
+
     m_running.store(true);
+
+    // Flush any pending stdin that was sent while toolchain/runtime was starting up
+    {
+        std::lock_guard<std::mutex> lock(m_stdin_mutex);
+        if (!m_pending_stdin.empty() && m_stdin_pipe[1] >= 0) {
+            write(m_stdin_pipe[1], m_pending_stdin.c_str(), m_pending_stdin.length());
+            m_pending_stdin.clear();
+        }
+    }
 
     m_stdout_thread = std::thread(&PipeManager::readLoop, this, m_stdout_pipe[0], m_stdoutCallback);
     m_stderr_thread = std::thread(&PipeManager::readLoop, this, m_stderr_pipe[0], m_stderrCallback);
@@ -53,8 +66,12 @@ bool PipeManager::start(std::function<void(const std::string&)> stdoutCallback,
 }
 
 void PipeManager::writeStdin(const std::string& input) {
+    std::lock_guard<std::mutex> lock(m_stdin_mutex);
     if (m_running.load() && m_stdin_pipe[1] >= 0) {
         write(m_stdin_pipe[1], input.c_str(), input.length());
+    } else {
+        // Buffer input so early typing is not discarded
+        m_pending_stdin += input;
     }
 }
 

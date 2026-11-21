@@ -143,15 +143,17 @@ class CodeRunnerService : Service() {
                             }
                             "java" -> {
                                 if (javaEngine == null) javaEngine = JavaEngine(applicationContext)
-                                isExecutionPhase = true
-                                lastInteractiveTime = System.currentTimeMillis()
-                                exitCode = javaEngine!!.run(sourceCode, callback)
+                                exitCode = javaEngine!!.run(sourceCode, callback, onExecutionStart = {
+                                    isExecutionPhase = true
+                                    lastInteractiveTime = System.currentTimeMillis()
+                                })
                             }
                             "cpp" -> {
                                 if (cppEngine == null) cppEngine = CppEngine(applicationContext)
-                                isExecutionPhase = true
-                                lastInteractiveTime = System.currentTimeMillis()
-                                exitCode = cppEngine!!.run(sourceCode, callback, optLevel, warnings)
+                                exitCode = cppEngine!!.run(sourceCode, callback, optLevel, warnings, onExecutionStart = {
+                                    isExecutionPhase = true
+                                    lastInteractiveTime = System.currentTimeMillis()
+                                })
                             }
                             else -> {
                                 callback.onStderr("Unsupported language: $language\n")

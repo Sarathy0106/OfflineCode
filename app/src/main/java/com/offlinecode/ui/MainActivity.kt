@@ -676,7 +676,7 @@ fun MainScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "OfflineCode is 100% offline, zero trackers, open source.",
+                        text = "OfflineCode v1.0.1 (Build 2) • 100% offline, zero trackers.",
                         color = Color.Gray,
                         fontSize = 11.sp
                     )

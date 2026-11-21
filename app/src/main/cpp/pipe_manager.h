@@ -4,6 +4,7 @@
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <mutex>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -27,6 +28,9 @@ private:
     int m_saved_stdin;
 
     std::atomic<bool> m_running{false};
+    std::mutex m_stdin_mutex;
+    std::string m_pending_stdin;
+
     std::thread m_stdout_thread;
     std::thread m_stderr_thread;
 

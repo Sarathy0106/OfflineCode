@@ -102,7 +102,13 @@ class CppEngine(private val context: Context) {
         }
     }
 
-    fun run(sourceCode: String, callback: IRunnerCallback, optLevel: String = "-O2", warnings: Boolean = false): Int {
+    fun run(
+        sourceCode: String,
+        callback: IRunnerCallback,
+        optLevel: String = "-O0",
+        warnings: Boolean = false,
+        onExecutionStart: (() -> Unit)? = null
+    ): Int {
         val nativeLibDir = context.applicationInfo.nativeLibraryDir
         val clangBin = File(nativeLibDir, "libclang_exec.so")
 
@@ -119,6 +125,8 @@ class CppEngine(private val context: Context) {
 
         try {
             srcFile.writeText(sourceCode)
+
+            callback.onStdout("[Compiling C++...]\n")
 
             // 2. Compile via Clang process
             val cmd = mutableListOf(
@@ -152,38 +160,42 @@ class CppEngine(private val context: Context) {
 
             val pb = ProcessBuilder(cmd)
             pb.directory(workspaceDir)
+            pb.redirectErrorStream(true) // Merge stdout and stderr to prevent pipe buffer deadlocks
             val env = pb.environment()
             env["PATH"] = "${binDir.absolutePath}:/system/bin"
             env["LD_LIBRARY_PATH"] = "$nativeLibDir:${libDir.absolutePath}:/system/lib64"
 
             val process = pb.start()
 
-            val stderrLines = mutableListOf<String>()
-            val errReader = BufferedReader(InputStreamReader(process.errorStream))
-            var errLine: String? = errReader.readLine()
-            while (errLine != null) {
-                stderrLines.add(errLine)
-                val matcher = ERROR_PATTERN.matcher(errLine)
+            val outputLines = mutableListOf<String>()
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            var line: String? = reader.readLine()
+            while (line != null) {
+                outputLines.add(line)
+                val matcher = ERROR_PATTERN.matcher(line)
                 if (matcher.find()) {
                     val lineNum = matcher.group(1)?.toIntOrNull() ?: 0
                     val colNum = matcher.group(2)?.toIntOrNull() ?: 0
-                    val msg = matcher.group(3) ?: errLine
+                    val msg = matcher.group(3) ?: line
                     try {
                         callback.onCompileError(lineNum, colNum, msg)
                     } catch (ignored: Exception) {}
                 }
-                errLine = errReader.readLine()
+                line = reader.readLine()
             }
 
             val compileExit = process.waitFor()
             if (compileExit != 0 || !outFile.exists()) {
-                for (line in stderrLines) {
-                    callback.onStderr("$line\n")
+                for (l in outputLines) {
+                    callback.onStderr("$l\n")
                 }
                 return compileExit
             }
 
+            callback.onStdout("[Running...]\n")
+
             // 3. Execute via JNI dlopen
+            onExecutionStart?.invoke()
             val nativeCallback = object : NativeRunCallback {
                 override fun onStdout(text: String) {
                     try {
