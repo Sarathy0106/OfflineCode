@@ -1,0 +1,119 @@
+#include "pipe_manager.h"
+#include <cstdio>
+#include <vector>
+
+PipeManager::PipeManager()
+    : m_saved_stdout(-1), m_saved_stderr(-1), m_saved_stdin(-1) {
+    m_stdout_pipe[0] = m_stdout_pipe[1] = -1;
+    m_stderr_pipe[0] = m_stderr_pipe[1] = -1;
+    m_stdin_pipe[0] = m_stdin_pipe[1] = -1;
+}
+
+PipeManager::~PipeManager() {
+    stop();
+}
+
+bool PipeManager::start(std::function<void(const std::string&)> stdoutCallback,
+                        std::function<void(const std::string&)> stderrCallback) {
+    if (m_running.load()) {
+        return false;
+    }
+
+    m_stdoutCallback = stdoutCallback;
+    m_stderrCallback = stderrCallback;
+
+    // Save originals
+    m_saved_stdout = dup(STDOUT_FILENO);
+    m_saved_stderr = dup(STDERR_FILENO);
+    m_saved_stdin = dup(STDIN_FILENO);
+
+    if (pipe(m_stdout_pipe) < 0 || pipe(m_stderr_pipe) < 0 || pipe(m_stdin_pipe) < 0) {
+        return false;
+    }
+
+    // Set stdout & stderr to unbuffered
+    fflush(stdout);
+    fflush(stderr);
+    setvbuf(stdout, nullptr, _IONBF, 0);
+    setvbuf(stderr, nullptr, _IONBF, 0);
+
+    // Redirect
+    dup2(m_stdout_pipe[1], STDOUT_FILENO);
+    dup2(m_stderr_pipe[1], STDERR_FILENO);
+    dup2(m_stdin_pipe[0], STDIN_FILENO);
+
+    m_running.store(true);
+
+    m_stdout_thread = std::thread(&PipeManager::readLoop, this, m_stdout_pipe[0], m_stdoutCallback);
+    m_stderr_thread = std::thread(&PipeManager::readLoop, this, m_stderr_pipe[0], m_stderrCallback);
+
+    return true;
+}
+
+void PipeManager::writeStdin(const std::string& input) {
+    if (m_running.load() && m_stdin_pipe[1] >= 0) {
+        write(m_stdin_pipe[1], input.c_str(), input.length());
+    }
+}
+
+void PipeManager::readLoop(int fd, const std::function<void(const std::string&)>& callback) {
+    char buffer[1024];
+    while (m_running.load()) {
+        ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+        if (bytesRead > 0) {
+            buffer[bytesRead] = '\0';
+            if (callback) {
+                callback(std::string(buffer, bytesRead));
+            }
+        } else if (bytesRead == 0) {
+            // EOF
+            break;
+        } else {
+            if (!m_running.load()) break;
+        }
+    }
+}
+
+void PipeManager::stop() {
+    if (!m_running.exchange(false)) {
+        return;
+    }
+
+    // Flush standard streams
+    fflush(stdout);
+    fflush(stderr);
+
+    // Restore original file descriptors
+    if (m_saved_stdout >= 0) {
+        dup2(m_saved_stdout, STDOUT_FILENO);
+        close(m_saved_stdout);
+        m_saved_stdout = -1;
+    }
+    if (m_saved_stderr >= 0) {
+        dup2(m_saved_stderr, STDERR_FILENO);
+        close(m_saved_stderr);
+        m_saved_stderr = -1;
+    }
+    if (m_saved_stdin >= 0) {
+        dup2(m_saved_stdin, STDIN_FILENO);
+        close(m_saved_stdin);
+        m_saved_stdin = -1;
+    }
+
+    // Close pipe ends
+    if (m_stdout_pipe[1] >= 0) { close(m_stdout_pipe[1]); m_stdout_pipe[1] = -1; }
+    if (m_stderr_pipe[1] >= 0) { close(m_stderr_pipe[1]); m_stderr_pipe[1] = -1; }
+    if (m_stdin_pipe[0] >= 0) { close(m_stdin_pipe[0]); m_stdin_pipe[0] = -1; }
+    if (m_stdin_pipe[1] >= 0) { close(m_stdin_pipe[1]); m_stdin_pipe[1] = -1; }
+
+    // Shutdown reader ends to unblock threads
+    if (m_stdout_pipe[0] >= 0) { close(m_stdout_pipe[0]); m_stdout_pipe[0] = -1; }
+    if (m_stderr_pipe[0] >= 0) { close(m_stderr_pipe[0]); m_stderr_pipe[0] = -1; }
+
+    if (m_stdout_thread.joinable()) {
+        m_stdout_thread.join();
+    }
+    if (m_stderr_thread.joinable()) {
+        m_stderr_thread.join();
+    }
+}

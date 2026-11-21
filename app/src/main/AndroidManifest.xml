@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- No android.permission.INTERNET! Completely offline! -->
+
+    <application
+        android:allowBackup="true"
+        android:extractNativeLibs="true"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:label="OfflineCode"
+        android:roundIcon="@android:drawable/ic_menu_edit"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.NoActionBar">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Isolated runner process for executing user code -->
+        <service
+            android:name=".runner.CodeRunnerService"
+            android:exported="false"
+            android:process=":runner" />
+
+    </application>
+
+</manifest>
