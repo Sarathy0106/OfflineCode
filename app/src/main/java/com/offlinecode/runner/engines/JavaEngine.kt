@@ -22,12 +22,16 @@ class JavaEngine(private val context: Context) {
     private val d8Dex get() = File(javaDir, "d8.dex")
     private val rtJar get() = File(javaDir, "rt.jar")
 
-    private val stdinPipedOutput = PipedOutputStream()
-    private val stdinPipedInput = PipedInputStream(stdinPipedOutput)
+    @Volatile
+    private var currentStdinOutput: PipedOutputStream? = null
 
     fun run(sourceCode: String, callback: IRunnerCallback): Int {
         val workDir = File(context.cacheDir, "java_run_${System.currentTimeMillis()}")
         workDir.mkdirs()
+
+        val pipeOut = PipedOutputStream()
+        val pipeIn = PipedInputStream(pipeOut)
+        currentStdinOutput = pipeOut
 
         try {
             // Determine class name from source code
@@ -146,7 +150,7 @@ class JavaEngine(private val context: Context) {
 
             System.setOut(customOut)
             System.setErr(customErr)
-            System.setIn(stdinPipedInput)
+            System.setIn(pipeIn)
 
             try {
                 mainMethod.invoke(null, arrayOf<String>())
@@ -169,21 +173,24 @@ class JavaEngine(private val context: Context) {
             callback.onStderr("Error: ${e.message}\n")
             return 5
         } finally {
+            try { pipeOut.close() } catch (ignored: Exception) {}
+            try { pipeIn.close() } catch (ignored: Exception) {}
+            currentStdinOutput = null
             workDir.deleteRecursively()
         }
     }
 
     fun writeStdin(input: String) {
         try {
-            stdinPipedOutput.write(input.toByteArray())
-            stdinPipedOutput.flush()
+            currentStdinOutput?.write(input.toByteArray())
+            currentStdinOutput?.flush()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
     private fun extractClassName(source: String): String? {
-        val pattern = Pattern.compile("public\\s+class\\s+(\\w+)")
+        val pattern = Pattern.compile("(?:public\\s+)?class\\s+(\\w+)")
         val matcher = pattern.matcher(source)
         return if (matcher.find()) matcher.group(1) else null
     }

@@ -5,32 +5,32 @@ object TemplateManager {
         return when (languageId) {
             "python" -> """# Python 3.10 Offline
 def main():
-    print("Hello from Python!")
-    name = "World"
-    print(f"Welcome, {name}!")
+    name = input("Enter your name: ")
+    print(f"Hello, {name}! Welcome to Python offline.")
 
 if __name__ == "__main__":
     main()
 """.trimIndent()
 
             "c" -> """#include <stdio.h>
-#include <stdlib.h>
 
 int main() {
-    printf("Hello from C (libtcc)!\n");
-    int a = 15;
-    int b = 27;
-    printf("Result: %d + %d = %d\n", a, b, a + b);
+    int num;
+    printf("Enter a number: ");
+    scanf("%d", &num);
+    printf("Square of %d is %d\n", num, num * num);
     return 0;
 }
 """.trimIndent()
 
-            "java" -> """// Compiled with ECJ + D8 on Android ART
+            "java" -> """import java.util.Scanner;
+
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello from Java!");
-        int x = 21 * 2;
-        System.out.println("Calculation result: " + x);
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter a number: ");
+        int x = sc.nextInt();
+        System.out.println("Cube of " + x + " is " + (x * x * x));
     }
 }
 """.trimIndent()

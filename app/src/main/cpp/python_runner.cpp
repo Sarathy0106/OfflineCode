@@ -61,23 +61,40 @@ Java_com_offlinecode_runner_engines_PythonNativeBridge_runPythonCode(
     g_py_pipe_manager.start(
         [jvm, globalCallback, onStdoutMid](const std::string &chunk) {
             JNIEnv *tEnv = nullptr;
-            jvm->AttachCurrentThread(&tEnv, nullptr);
+            bool attached = false;
+            if (jvm->GetEnv((void **)&tEnv, JNI_VERSION_1_6) != JNI_OK) {
+                jvm->AttachCurrentThread(&tEnv, nullptr);
+                attached = true;
+            }
             if (tEnv) {
                 jstring str = tEnv->NewStringUTF(chunk.c_str());
                 tEnv->CallVoidMethod(globalCallback, onStdoutMid, str);
                 tEnv->DeleteLocalRef(str);
             }
+            if (attached) {
+                jvm->DetachCurrentThread();
+            }
         },
         [jvm, globalCallback, onStderrMid](const std::string &chunk) {
             JNIEnv *tEnv = nullptr;
-            jvm->AttachCurrentThread(&tEnv, nullptr);
+            bool attached = false;
+            if (jvm->GetEnv((void **)&tEnv, JNI_VERSION_1_6) != JNI_OK) {
+                jvm->AttachCurrentThread(&tEnv, nullptr);
+                attached = true;
+            }
             if (tEnv) {
                 jstring str = tEnv->NewStringUTF(chunk.c_str());
                 tEnv->CallVoidMethod(globalCallback, onStderrMid, str);
                 tEnv->DeleteLocalRef(str);
             }
+            if (attached) {
+                jvm->DetachCurrentThread();
+            }
         }
     );
+
+    // Ensure line buffering for interactive stdin/stdout
+    PyRun_SimpleString("import sys; sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, 'reconfigure') else None; sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, 'reconfigure') else None");
 
     const char *code = env->GetStringUTFChars(sourceCode, nullptr);
     int res = PyRun_SimpleString(code);
