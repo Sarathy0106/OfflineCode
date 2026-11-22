@@ -5,7 +5,6 @@
 
     <application
         android:allowBackup="true"
-        android:extractNativeLibs="true"
         android:icon="@android:drawable/ic_menu_edit"
         android:label="OfflineCode"
         android:roundIcon="@android:drawable/ic_menu_edit"
