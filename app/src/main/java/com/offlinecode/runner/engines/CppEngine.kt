@@ -66,6 +66,7 @@ class CppEngine(private val context: Context) {
     }
 
     private fun createSymlinkSafely(target: String, linkName: String) {
+        val linkFile = File(linkName)
         try {
             try {
                 Os.remove(linkName)
@@ -74,6 +75,16 @@ class CppEngine(private val context: Context) {
             Log.d(TAG, "Created symlink: $linkName -> $target")
         } catch (e: Exception) {
             Log.w(TAG, "Failed to create symlink $linkName -> $target: ${e.message}")
+            try {
+                val targetFile = File(target)
+                if (targetFile.exists() && (!linkFile.exists() || linkFile.length() != targetFile.length())) {
+                    targetFile.copyTo(linkFile, overwrite = true)
+                    linkFile.setExecutable(true, false)
+                    Log.d(TAG, "Fallback copied binary: $linkName -> $target")
+                }
+            } catch (copyEx: Exception) {
+                Log.e(TAG, "Fallback copy failed for $linkName", copyEx)
+            }
         }
     }
 
@@ -139,9 +150,11 @@ class CppEngine(private val context: Context) {
             if (warnings) {
                 cmd.add("-Wall")
             }
-            if (lldNative.exists()) {
-                cmd.add("-fuse-ld=lld")
-                cmd.add("--ld-path=${lldNative.absolutePath}")
+            val lldBin = File(binDir, "ld.lld")
+            cmd.add("-fuse-ld=lld")
+            if (lldBin.exists()) {
+                // Must pass the binary named 'ld.lld', NOT 'liblld_exec.so', otherwise LLD fails with 'lld is a generic driver'
+                cmd.add("--ld-path=${lldBin.absolutePath}")
             }
             cmd.addAll(listOf(
                 "-resource-dir", clangResourceDir.absolutePath,
