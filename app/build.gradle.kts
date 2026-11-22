@@ -43,11 +43,19 @@ android {
 
     signingConfigs {
         create("release") {
-            val keyPath = keystoreProperties.getProperty("storeFile") ?: "../release.keystore"
+            val keyPath = System.getenv("KEYSTORE_FILE")
+                ?: keystoreProperties.getProperty("storeFile")
+                ?: "../release.keystore"
             storeFile = file(keyPath)
-            storePassword = keystoreProperties.getProperty("storePassword") ?: "offlinecode123"
-            keyAlias = keystoreProperties.getProperty("keyAlias") ?: "offlinecode"
-            keyPassword = keystoreProperties.getProperty("keyPassword") ?: "offlinecode123"
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+                ?: keystoreProperties.getProperty("storePassword")
+                ?: "offlinecode123"
+            keyAlias = System.getenv("KEY_ALIAS")
+                ?: keystoreProperties.getProperty("keyAlias")
+                ?: "offlinecode"
+            keyPassword = System.getenv("KEY_PASSWORD")
+                ?: keystoreProperties.getProperty("keyPassword")
+                ?: "offlinecode123"
         }
     }
 

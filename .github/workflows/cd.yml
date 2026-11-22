@@ -1,0 +1,124 @@
+name: Android CD Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - production
+  workflow_dispatch:
+    inputs:
+      create_github_release:
+        description: 'Publish a GitHub Release with APK & AAB assets'
+        required: true
+        type: boolean
+        default: true
+      deploy_to_playstore:
+        description: 'Deploy AAB to Google Play Store (Internal Track)'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    name: Build Signed Bundle & APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Setup Android SDK & NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK 27 & CMake
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.0.12077973" "cmake;3.22.1"
+
+      - name: Make Gradlew Executable
+        run: chmod +x gradlew
+
+      - name: Configure Keystore Signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS_SECRET: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS_SECRET: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Decoding release keystore from GitHub Secrets..."
+            echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
+          else
+            echo "Warning: KEYSTORE_BASE64 secret not set! Creating release key..."
+            keytool -genkeypair -v -keystore release.keystore \
+              -alias "${KEY_ALIAS_SECRET:-offlinecode}" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "${KEYSTORE_PASS:-offlinecode123}" \
+              -keypass "${KEY_PASS_SECRET:-offlinecode123}" \
+              -dname "CN=OfflineCode, OU=Mobile, O=OfflineCode, L=City, S=State, C=US"
+          fi
+
+      - name: Build Signed App Bundle (AAB) & Release APK
+        env:
+          KEYSTORE_FILE: "../release.keystore"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'offlinecode123' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'offlinecode' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'offlinecode123' }}
+        run: |
+          ./gradlew bundleRelease assembleRelease --stacktrace
+
+      - name: Upload Release AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: offlinecode-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          retention-days: 60
+
+      - name: Upload Release APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: offlinecode-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 60
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.create_github_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: OfflineCode ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            app/build/outputs/bundle/release/app-release.aab
+            app/build/outputs/apk/release/app-release.apk
+            playstore_icon_512.png
+            store_assets/feature_graphic_1024x500.png
+
+      - name: Deploy to Google Play Store (Internal Track)
+        if: (github.event.inputs.deploy_to_playstore == 'true' || startsWith(github.ref, 'refs/tags/v')) && env.PLAY_SERVICE_ACCOUNT_JSON != ''
+        uses: r0adkll/upload-google-play@v1
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.offlinecode
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
