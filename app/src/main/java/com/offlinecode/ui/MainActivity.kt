@@ -132,6 +132,7 @@ fun MainScreen(
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showSaveSnippetDialog by remember { mutableStateOf(false) }
     var newSnippetTitle by remember { mutableStateOf("") }
+    var isStdinFocused by remember { mutableStateOf(false) }
 
     val openFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -228,6 +229,7 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
         ) {
             // Secondary Control Bar: Language selector, Search/Format actions, and Run/Stop button
             Row(
@@ -291,10 +293,14 @@ fun MainScreen(
                             onClick = { viewModel.stopCode() },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
                             shape = RoundedCornerShape(5.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                             modifier = Modifier.height(28.dp)
                         ) {
-                            Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(14.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(12.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Stop", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
@@ -346,13 +352,15 @@ fun MainScreen(
                     .fillMaxWidth()
             )
 
-            // Symbol Row (Keyboard accessory with quick comment & format)
-            SymbolRow(
-                language = selectedLanguage,
-                onInsertSymbol = { symbol -> viewModel.insertSymbol(symbol) },
-                onToggleComment = { viewModel.toggleComment() },
-                onFormatCode = { viewModel.formatCode() }
-            )
+            // Symbol Row (Keyboard accessory with quick comment & format) - hidden when typing stdin to maximize console view
+            if (!isStdinFocused) {
+                SymbolRow(
+                    language = selectedLanguage,
+                    onInsertSymbol = { symbol -> viewModel.insertSymbol(symbol) },
+                    onToggleComment = { viewModel.toggleComment() },
+                    onFormatCode = { viewModel.formatCode() }
+                )
+            }
 
             // Collapsible Console Panel with Live Execution Stats
             ConsolePanel(
@@ -362,6 +370,7 @@ fun MainScreen(
                 onStop = { viewModel.stopCode() },
                 onClear = { viewModel.clearConsole() },
                 onJumpToLine = { line, col -> viewModel.jumpToLine(line, col) },
+                onStdinFocusChanged = { isStdinFocused = it },
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -676,7 +685,7 @@ fun MainScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "OfflineCode v1.0.4 (Build 5) • 100% offline, zero trackers.",
+                        text = "OfflineCode v1.0.5 (Build 6) • 100% offline, zero trackers.",
                         color = Color.Gray,
                         fontSize = 11.sp
                     )

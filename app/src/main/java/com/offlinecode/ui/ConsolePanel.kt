@@ -1,6 +1,8 @@
 package com.offlinecode.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -39,10 +42,12 @@ fun ConsolePanel(
     onStop: () -> Unit,
     onClear: () -> Unit,
     onJumpToLine: (Int, Int) -> Unit,
+    onStdinFocusChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var stdinInput by remember { mutableStateOf("") }
     var isExpanded by remember { mutableStateOf(false) }
+    var isInputFocused by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     val lastExit = remember(events) {
@@ -62,10 +67,22 @@ fun ConsolePanel(
         }
     }
 
+    LaunchedEffect(isInputFocused) {
+        if (isInputFocused && events.isNotEmpty()) {
+            listState.animateScrollToItem(events.size - 1)
+        }
+    }
+
+    val panelHeight = when {
+        !isExpanded -> 36.dp
+        isInputFocused -> 250.dp
+        else -> 220.dp
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(if (isExpanded) 220.dp else 36.dp)
+            .height(panelHeight)
             .background(Color(0xFF181818))
     ) {
         // Console Header (Click to Toggle Expand/Collapse)
@@ -100,13 +117,14 @@ fun ConsolePanel(
                     CircularProgressIndicator(
                         modifier = Modifier.size(12.dp),
                         strokeWidth = 2.dp,
-                        color = Color(0xFF007ACC)
+                        color = Color(0xFF00E5FF)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Running...",
                         fontSize = 11.sp,
-                        color = Color(0xFF007ACC)
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF00E5FF)
                     )
                 } else if (lastExit != null) {
                     // Execution Stats badge
@@ -165,6 +183,32 @@ fun ConsolePanel(
         if (isExpanded) {
             HorizontalDivider(color = Color(0xFF333333))
 
+            // Prominent Live Status Bar when program is running
+            if (isRunning) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF0F263B))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(10.dp),
+                        strokeWidth = 2.dp,
+                        color = Color(0xFF00E5FF)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "● Program active • Waiting for input below if required",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00E5FF),
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                HorizontalDivider(color = Color(0xFF1E4E79))
+            }
+
             // Output Area
             LazyColumn(
                 state = listState,
@@ -173,7 +217,7 @@ fun ConsolePanel(
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                if (events.isEmpty()) {
+                if (events.isEmpty() && !isRunning) {
                     item {
                         Text(
                             text = "Tap 'Run' to compile and execute offline.",
@@ -188,9 +232,11 @@ fun ConsolePanel(
                 items(events) { event ->
                     when (event) {
                         is RunEvent.Stdout -> {
+                            val isUserInput = event.text.startsWith("> ")
                             Text(
                                 text = event.text,
-                                color = ConsoleStdout,
+                                color = if (isUserInput) Color(0xFF00E5FF) else ConsoleStdout,
+                                fontWeight = if (isUserInput) FontWeight.Bold else FontWeight.Normal,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 13.sp
                             )
@@ -239,6 +285,56 @@ fun ConsolePanel(
                 }
             }
 
+            // Quick Input Accessory Chips (only visible when running or input is focused)
+            if (isRunning || isInputFocused) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF1E1E1E))
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "Quick:",
+                        fontSize = 10.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Bold
+                    )
+                    listOf("0", "1", "2", "↵", "Space", "Clear").forEach { chip ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF2A2A2A))
+                                .clickable {
+                                    when (chip) {
+                                        "↵" -> {
+                                            if (stdinInput.isNotEmpty()) {
+                                                onSendStdin("$stdinInput\n")
+                                                stdinInput = ""
+                                            } else {
+                                                onSendStdin("\n")
+                                            }
+                                        }
+                                        "Space" -> stdinInput += " "
+                                        "Clear" -> stdinInput = ""
+                                        else -> stdinInput += chip
+                                    }
+                                }
+                                .padding(horizontal = 7.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = chip,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (chip == "↵") Color(0xFF00E5FF) else Color.White,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+            }
+
             // Stdin Interactive Input Field
             Row(
                 modifier = Modifier
@@ -252,14 +348,28 @@ fun ConsolePanel(
                     onValueChange = { stdinInput = it },
                     placeholder = {
                         Text(
-                            text = "Enter stdin input...",
+                            text = if (isRunning) "Type input (e.g. 17) & press ↵..." else "Enter stdin input...",
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = if (isRunning) Color(0xFFAAAAAA) else Color.Gray
                         )
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .height(48.dp),
+                        .height(46.dp)
+                        .onFocusChanged { focusState ->
+                            isInputFocused = focusState.isFocused
+                            onStdinFocusChanged(focusState.isFocused)
+                        }
+                        .then(
+                            if (isRunning) {
+                                Modifier.border(
+                                    BorderStroke(1.5.dp, Color(0xFF00E5FF)),
+                                    RoundedCornerShape(6.dp)
+                                )
+                            } else {
+                                Modifier
+                            }
+                        ),
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -271,6 +381,8 @@ fun ConsolePanel(
                         if (stdinInput.isNotEmpty()) {
                             onSendStdin("$stdinInput\n")
                             stdinInput = ""
+                        } else {
+                            onSendStdin("\n")
                         }
                     }),
                     colors = TextFieldDefaults.colors(
@@ -289,11 +401,13 @@ fun ConsolePanel(
                         if (stdinInput.isNotEmpty()) {
                             onSendStdin("$stdinInput\n")
                             stdinInput = ""
+                        } else {
+                            onSendStdin("\n")
                         }
                     },
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color(0xFF007ACC), RoundedCornerShape(6.dp))
+                        .background(if (isRunning) Color(0xFF007ACC) else Color(0xFF444444), RoundedCornerShape(6.dp))
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
@@ -306,3 +420,4 @@ fun ConsolePanel(
         }
     }
 }
+

@@ -550,10 +550,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun runCode() {
         if (_isRunning.value) return
 
-        _runEvents.value = emptyList()
+        val lang = _selectedLanguage.value
+        val langDisplay = when (lang) {
+            "cpp" -> "C++ (Clang 17)"
+            "c" -> "C (TinyCC)"
+            "python" -> "Python 3.10"
+            "java" -> "Java"
+            else -> lang.uppercase()
+        }
+        _runEvents.value = listOf(RunEvent.Stdout("[Compiling & Running $langDisplay...]\n"))
         _isRunning.value = true
 
-        val lang = _selectedLanguage.value
         val source = _editorValue.value.text
         val limits = Limits(timeoutSeconds = _timeoutSeconds.value, memoryLimitMb = 256)
 
@@ -585,7 +592,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun sendStdin(input: String) {
         stdinFlow.tryEmit(input)
-        _runEvents.value = _runEvents.value + RunEvent.Stdout(input)
+        _runEvents.value = _runEvents.value + RunEvent.Stdout("> $input")
     }
 
     fun clearConsole() {
