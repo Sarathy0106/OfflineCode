@@ -1,0 +1,50 @@
+================================================================================
+GOOGLE PLAY STORE DEFAULT STORE LISTING METADATA
+================================================================================
+
+[APP NAME] (Max 30 characters - Currently 27 characters)
+OfflineCode: Compiler & IDE
+
+--------------------------------------------------------------------------------
+
+[SHORT DESCRIPTION] (Max 80 characters - Currently 79 characters)
+100% offline code compiler for Python, C, C++, and Java with interactive stdin.
+
+--------------------------------------------------------------------------------
+
+[FULL DESCRIPTION] (Max 4000 characters - Currently 2319 characters)
+OfflineCode is a powerful, 100% offline multi-language code compiler and programming IDE designed for Android. Write, compile, and execute Python, C, C++, and Java code directly on your mobile device without an internet connection.
+
+Whether you are preparing for exams, learning data structures and algorithms, practicing competitive programming, or coding on the go, OfflineCode brings desktop-grade compilation directly into your pocket.
+
+KEY HIGHLIGHTS:
+
+● TRUE 100% OFFLINE COMPILATION
+No Wi-Fi, mobile data, or external servers required. Your code is compiled and executed locally on your device hardware, keeping your programs private, secure, and blazing fast.
+
+● ZERO INTERNET PERMISSION
+OfflineCode does not request internet permissions (android.permission.INTERNET). Zero trackers, zero analytics, zero data collection. Complete privacy guaranteed.
+
+● FULL INTERACTIVE STDIN SUPPORT
+Unlike other mobile compilers that only run static code, OfflineCode features a real-time interactive terminal. Provide keyboard input on-the-fly for scanf, cin, input(), and Scanner prompts.
+
+● SUPPORTED LANGUAGES & ENGINES
+• Python 3.10: Full offline Python runtime with standard library support (math, sys, json, re, itertools, and more).
+• C Language: Powered by TinyCC (TCC) for instant, sub-second compilation and execution.
+• C++ (C++17): High-performance native compilation powered by Clang 17 and LLVM with complete Standard Template Library (STL) support (vector, map, string, algorithm, etc.).
+• Java: Pure offline Java development powered by Eclipse Compiler for Java (ECJ) and Android D8 DEX engine.
+
+● CODE EDITOR DESIGNED FOR MOBILE CODING
+• Syntax highlighting with dark theme for comfortable coding day and night.
+• Quick access shortcut bar for common coding symbols ({ }, ( ), [ ], ;, ", #, //).
+• Built-in code formatter and bracket auto-completion.
+• Fast search, replace, and line numbering.
+• Import and export code files (.py, .c, .cpp, .java) directly from device storage.
+
+PERFECT FOR:
+• Computer science students and school learners.
+• Competitive programmers practicing algorithms and problem solving.
+• Coding during commutes, flights, or places without internet access.
+• Anyone wanting a lightweight, distraction-free coding playground on Android.
+
+Write code anywhere, anytime with OfflineCode.
