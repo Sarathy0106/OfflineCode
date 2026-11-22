@@ -9,15 +9,15 @@ plugins {
 
 android {
     namespace = "com.offlinecode"
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     defaultConfig {
         applicationId = "com.offlinecode"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 4
-        versionName = "1.0.3"
+        targetSdk = 36
+        versionCode = 5
+        versionName = "1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -59,6 +59,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
         debug {
             isMinifyEnabled = true
