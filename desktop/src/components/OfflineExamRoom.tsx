@@ -82,13 +82,15 @@ export const OfflineExamRoom: React.FC<OfflineExamRoomProps> = ({
     return [];
   };
 
-  // Initialize Starter Templates
+  // Initialize Clean Starter Templates (1-line comment, no default code)
   useEffect(() => {
     const initial: Record<string, { code: string; language: string }> = {};
     test.questions?.forEach(q => {
       const defaultLang = q.allowed_languages?.[0] || 'python';
-      const template = q.starter_templates?.[defaultLang] || '';
-      initial[q.id] = { code: template, language: defaultLang };
+      const cleanComment = defaultLang.toLowerCase().includes('py')
+        ? '# Write your solution here\n'
+        : '// Write your solution here\n';
+      initial[q.id] = { code: cleanComment, language: defaultLang };
     });
     setAnswers(initial);
 
@@ -169,12 +171,14 @@ export const OfflineExamRoom: React.FC<OfflineExamRoomProps> = ({
   // Change language for active question
   const handleLanguageChange = (newLang: string) => {
     if (!currentQuestion) return;
-    const template = currentQuestion.starter_templates?.[newLang] || '';
+    const cleanComment = newLang.toLowerCase().includes('py')
+      ? '# Write your solution here\n'
+      : '// Write your solution here\n';
     setAnswers(prev => ({
       ...prev,
       [currentQuestion.id]: {
         language: newLang,
-        code: template
+        code: cleanComment
       }
     }));
   };

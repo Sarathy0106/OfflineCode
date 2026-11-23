@@ -88,10 +88,10 @@ const SAMPLE_JSON: AdminJsonTemplate = {
       output_format: "Two space-separated indices (0-indexed)",
       allowed_languages: ["python", "cpp", "java", "c"],
       starter_templates: {
-        python: "import sys\n\ndef solve():\n    # Write your solution here\n    pass\n\nif __name__ == '__main__':\n    solve()\n",
-        cpp: "#include <iostream>\n#include <vector>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n",
-        java: "import java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        // Write your solution here\n    }\n}\n",
-        c: "#include <stdio.h>\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n"
+        python: "# Write your solution here\n",
+        cpp: "// Write your solution here\n",
+        java: "// Write your solution here\n",
+        c: "// Write your solution here\n"
       },
       sample_test_cases: [
         {
@@ -122,8 +122,10 @@ const SAMPLE_JSON: AdminJsonTemplate = {
       output_format: "Print YES if valid palindrome, otherwise NO",
       allowed_languages: ["python", "cpp", "java", "c"],
       starter_templates: {
-        python: "import sys\n\ndef solve():\n    # Write your solution here\n    pass\n\nif __name__ == '__main__':\n    solve()\n",
-        cpp: "#include <iostream>\n#include <string>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n"
+        python: "# Write your solution here\n",
+        cpp: "// Write your solution here\n",
+        java: "// Write your solution here\n",
+        c: "// Write your solution here\n"
       },
       sample_test_cases: [
         {
@@ -142,13 +144,8 @@ const SAMPLE_JSON: AdminJsonTemplate = {
   ]
 };
 
-// Initial CRUD Entities
-const INITIAL_STUDENTS = [
-  { id: 'st-1', name: 'Sarathy V', roll_id: 'CS2026-042', email: 'sarathy@student.edu', dept: 'Computer Science', status: 'Completed', score: 92 },
-  { id: 'st-2', name: 'Alex Rivera', roll_id: 'CS2026-015', email: 'alex@student.edu', dept: 'Software Eng', status: 'Completed', score: 85 },
-  { id: 'st-3', name: 'Priya Sharma', roll_id: 'CS2026-088', email: 'priya@student.edu', dept: 'AI & Data Science', status: 'Pending', score: 0 },
-  { id: 'st-4', name: 'Marcus Chen', roll_id: 'CS2026-104', email: 'marcus@student.edu', dept: 'Computer Science', status: 'In Progress', score: 45 }
-];
+// Initial CRUD Entities (Fetched live from Supabase)
+const INITIAL_STUDENTS: Array<any> = [];
 
 const INITIAL_SUBJECTS = ['Computer Science', 'Algorithms & Data Structures', 'Operating Systems', 'Discrete Mathematics'];
 const INITIAL_TOPICS = ['Arrays & Hash Maps', 'Strings & Two Pointers', 'Dynamic Programming', 'Trees & Graphs', 'Bit Manipulation'];

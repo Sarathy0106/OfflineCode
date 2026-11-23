@@ -41,6 +41,12 @@
     "directories": {
       "output": "release"
     },
+    "extraResources": [
+      {
+        "from": "compilers",
+        "to": "compilers"
+      }
+    ],
     "files": [
       "dist/**/*",
       "dist-electron/**/*"

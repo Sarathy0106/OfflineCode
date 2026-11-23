@@ -235,6 +235,60 @@ async function runCommand(
   });
 }
 
+// Compiler Discovery Helper (especially for Windows offline execution)
+function getBundledTccPath(): string | null {
+  const possiblePaths = [
+    path.join(process.resourcesPath || '', 'compilers', 'win32', 'tcc', 'tcc.exe'),
+    path.join(app.getAppPath(), 'compilers', 'win32', 'tcc', 'tcc.exe'),
+    path.join(__dirname, '..', '..', 'compilers', 'win32', 'tcc', 'tcc.exe'),
+    path.join(process.cwd(), 'compilers', 'win32', 'tcc', 'tcc.exe')
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+function resolveExecutable(cmd: string): string {
+  if (process.platform !== 'win32') return cmd;
+
+  // If already full path
+  if (path.isAbsolute(cmd) && fs.existsSync(cmd)) return cmd;
+
+  // Standard Windows installations check
+  const standardDirs = [
+    'C:\\MinGW\\bin',
+    'C:\\msys64\\mingw64\\bin',
+    'C:\\msys64\\ucrt64\\bin',
+    'C:\\msys64\\clang64\\bin',
+    'C:\\Program Files\\CodeBlocks\\MinGW\\bin',
+    'C:\\TDM-GCC-64\\bin',
+    'C:\\w64devkit\\bin',
+    'C:\\Program Files\\LLVM\\bin',
+    'C:\\Program Files\\Java\\jdk-21\\bin',
+    'C:\\Program Files\\Java\\jdk-17\\bin',
+    'C:\\Program Files\\Java\\jdk-11\\bin',
+    'C:\\Users\\' + (process.env.USERNAME || '') + '\\AppData\\Local\\Programs\\Python\\Python312',
+    'C:\\Users\\' + (process.env.USERNAME || '') + '\\AppData\\Local\\Programs\\Python\\Python311',
+    'C:\\Python312',
+    'C:\\Python311',
+    'C:\\Python310'
+  ];
+
+  const exeName = cmd.endsWith('.exe') ? cmd : `${cmd}.exe`;
+  for (const dir of standardDirs) {
+    const candidate = path.join(dir, exeName);
+    if (fs.existsSync(candidate)) {
+      if (!process.env.PATH?.includes(dir)) {
+        process.env.PATH = `${dir};${process.env.PATH || ''}`;
+      }
+      return candidate;
+    }
+  }
+
+  return cmd;
+}
+
 // Compile & Execute Engine
 async function executeOffline(language: string, code: string, input: string = '', timeoutMs: number = 5000) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'offline_exam_'));
@@ -244,8 +298,7 @@ async function executeOffline(language: string, code: string, input: string = ''
     if (normalizedLang === 'python' || normalizedLang === 'py') {
       const scriptPath = path.join(tmpDir, 'solution.py');
       fs.writeFileSync(scriptPath, code);
-      // Try python3, fallback to python
-      const pyCmd = process.platform === 'win32' ? 'python' : 'python3';
+      const pyCmd = process.platform === 'win32' ? resolveExecutable('python') : 'python3';
       return await runCommand(pyCmd, [scriptPath], input, timeoutMs, tmpDir);
     }
 
@@ -254,7 +307,8 @@ async function executeOffline(language: string, code: string, input: string = ''
       const binPath = path.join(tmpDir, process.platform === 'win32' ? 'solution.exe' : 'solution.out');
       fs.writeFileSync(srcPath, code);
 
-      const compiler = process.platform === 'win32' ? 'g++' : 'clang++';
+      const defaultCompiler = process.platform === 'win32' ? 'g++' : 'clang++';
+      const compiler = resolveExecutable(defaultCompiler);
       const compileRes = await runCommand(compiler, ['-O2', srcPath, '-o', binPath], '', 10000, tmpDir);
       if (compileRes.exitCode !== 0) {
         return {
@@ -272,8 +326,18 @@ async function executeOffline(language: string, code: string, input: string = ''
       const binPath = path.join(tmpDir, process.platform === 'win32' ? 'solution.exe' : 'solution.out');
       fs.writeFileSync(srcPath, code);
 
-      const compiler = process.platform === 'win32' ? 'gcc' : 'clang';
-      const compileRes = await runCommand(compiler, ['-O2', srcPath, '-o', binPath], '', 10000, tmpDir);
+      let compiler = process.platform === 'win32' ? resolveExecutable('gcc') : 'clang';
+      let args = ['-O2', srcPath, '-o', binPath];
+
+      // On Windows, if gcc is not found or fails, fallback to bundled portable TCC
+      const bundledTcc = getBundledTccPath();
+      let compileRes = await runCommand(compiler, args, '', 10000, tmpDir);
+
+      if (compileRes.exitCode !== 0 && process.platform === 'win32' && bundledTcc) {
+        // Fallback to bundled TinyCC
+        compileRes = await runCommand(bundledTcc, [srcPath, '-o', binPath], '', 10000, tmpDir);
+      }
+
       if (compileRes.exitCode !== 0) {
         return {
           stdout: '',
@@ -289,7 +353,10 @@ async function executeOffline(language: string, code: string, input: string = ''
       const srcPath = path.join(tmpDir, 'Solution.java');
       fs.writeFileSync(srcPath, code);
 
-      const compileRes = await runCommand('javac', ['Solution.java'], '', 10000, tmpDir);
+      const javacCmd = resolveExecutable('javac');
+      const javaCmd = resolveExecutable('java');
+
+      const compileRes = await runCommand(javacCmd, ['Solution.java'], '', 10000, tmpDir);
       if (compileRes.exitCode !== 0) {
         return {
           stdout: '',
@@ -298,7 +365,7 @@ async function executeOffline(language: string, code: string, input: string = ''
           timeMs: compileRes.timeMs
         };
       }
-      return await runCommand('java', ['Solution'], input, timeoutMs, tmpDir);
+      return await runCommand(javaCmd, ['Solution'], input, timeoutMs, tmpDir);
     }
 
     return {

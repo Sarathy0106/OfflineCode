@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   Shield,
@@ -7,13 +7,8 @@ import {
   ArrowRight,
   User,
   Sparkles,
-  BookOpen,
-  Terminal,
   Layers,
-  CheckCircle2,
   Cpu,
-  Search,
-  Filter,
   AlertCircle
 } from 'lucide-react';
 
@@ -28,6 +23,7 @@ interface StudentRecord {
   batch: string;
   phone: string;
   college_email: string;
+  personal_email?: string;
   dob: string;
   blood_group: string;
 }
@@ -44,7 +40,7 @@ interface LoginPageProps {
   isOnline: boolean;
 }
 
-// Authorized Admin Credentials
+// Authorized Admin Credentials (Strictly 2 accounts allowed)
 const AUTHORIZED_ADMINS = [
   {
     email: 'facadmin@offlinecode.com',
@@ -65,91 +61,80 @@ const AUTHORIZED_ADMINS = [
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
   const [selectedRole, setSelectedRole] = useState<'student' | 'admin'>('student');
 
-  // Student Auth State
-  const [students, setStudents] = useState<StudentRecord[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSection, setSelectedSection] = useState<string>('All');
-  const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
-  const [studentPasscode, setStudentPasscode] = useState('');
+  // Student Auth State (NO LISTING: College Email + Enrollment Number as Password)
+  const [studentEmail, setStudentEmail] = useState('');
+  const [studentPassword, setStudentPassword] = useState('');
   const [studentAuthError, setStudentAuthError] = useState<string | null>(null);
-  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [isVerifyingStudent, setIsVerifyingStudent] = useState(false);
 
-  // Admin Auth State
+  // Admin Auth State (Strictly 2 authorized accounts)
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
 
-  // Fetch students dataset from Supabase
-  useEffect(() => {
-    const fetchStudents = async () => {
-      setIsLoadingStudents(true);
-      try {
-        const { data, error } = await supabase
-          .from('students')
-          .select('*')
-          .order('name', { ascending: true });
-
-        if (error) throw error;
-        if (data && data.length > 0) {
-          setStudents(data as StudentRecord[]);
-          // Pre-select first student
-          setSelectedStudent(data[0] as StudentRecord);
-        }
-      } catch (err) {
-        console.error('Failed to fetch students from Supabase:', err);
-      } finally {
-        setIsLoadingStudents(false);
-      }
-    };
-
-    fetchStudents();
-  }, []);
-
-  // Filter students by section and search query (name, register number, or enrollment number)
-  const filteredStudents = students.filter((s) => {
-    const matchesSection = selectedSection === 'All' || s.section === selectedSection;
-    const query = searchQuery.toLowerCase().trim();
-    const matchesQuery =
-      !query ||
-      s.name.toLowerCase().includes(query) ||
-      (s.register_number && s.register_number.toLowerCase().includes(query)) ||
-      (s.enrollment_number && s.enrollment_number.toLowerCase().includes(query)) ||
-      (s.college_email && s.college_email.toLowerCase().includes(query));
-    return matchesSection && matchesQuery;
-  });
-
-  // Handle Student Login
-  const handleStudentSubmit = (e: React.FormEvent) => {
+  // Handle Student Login: Validates against Supabase students table
+  const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStudentAuthError(null);
 
-    let targetStudent = selectedStudent;
-    if (!targetStudent && searchQuery.trim()) {
-      targetStudent =
-        students.find(
-          (s) =>
-            s.register_number?.toLowerCase() === searchQuery.toLowerCase().trim() ||
-            s.enrollment_number?.toLowerCase() === searchQuery.toLowerCase().trim() ||
-            s.name.toLowerCase() === searchQuery.toLowerCase().trim()
-        ) || null;
-    }
+    const emailTrim = studentEmail.trim().toLowerCase();
+    const passTrim = studentPassword.trim().toUpperCase();
 
-    if (!targetStudent) {
-      setStudentAuthError('Please select or search your student profile from the dataset.');
+    if (!emailTrim || !passTrim) {
+      setStudentAuthError('Please enter both your college email and enrollment number.');
       return;
     }
 
-    onLogin({
-      role: 'student',
-      name: targetStudent.name,
-      id: targetStudent.register_number || targetStudent.enrollment_number || 'CS2026',
-      email: targetStudent.college_email || `${targetStudent.register_number?.toLowerCase()}@smvec.ac.in`,
-      section: targetStudent.section,
-      dept: targetStudent.department
-    });
+    setIsVerifyingStudent(true);
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*');
+
+      if (error) {
+        console.error('Supabase error:', error);
+      }
+
+      const allStudents = (data as StudentRecord[]) || [];
+
+      // Match student by Email & Enrollment Number password
+      const matchedStudent = allStudents.find((s) => {
+        const matchesEmail =
+          (s.college_email && s.college_email.toLowerCase() === emailTrim) ||
+          (s.personal_email && s.personal_email.toLowerCase() === emailTrim) ||
+          (s.register_number && s.register_number.toLowerCase() === emailTrim) ||
+          (s.register_number && `${s.register_number.toLowerCase()}@smvec.ac.in` === emailTrim) ||
+          (s.enrollment_number && s.enrollment_number.toLowerCase() === emailTrim);
+
+        const matchesPass =
+          (s.enrollment_number && s.enrollment_number.trim().toUpperCase() === passTrim) ||
+          (s.register_number && s.register_number.trim().toUpperCase() === passTrim);
+
+        return matchesEmail && matchesPass;
+      });
+
+      if (matchedStudent) {
+        onLogin({
+          role: 'student',
+          name: matchedStudent.name,
+          id: matchedStudent.register_number || matchedStudent.enrollment_number,
+          email: matchedStudent.college_email || `${matchedStudent.register_number?.toLowerCase()}@smvec.ac.in`,
+          section: matchedStudent.section,
+          dept: matchedStudent.department
+        });
+      } else {
+        setStudentAuthError(
+          'Authentication failed. Invalid College Email or Enrollment Number. Please check your credentials.'
+        );
+      }
+    } catch (err: any) {
+      setStudentAuthError(err?.message || 'Error verifying credentials against database.');
+    } finally {
+      setIsVerifyingStudent(false);
+    }
   };
 
-  // Handle Admin Login (Strictly checks the 2 credentials)
+  // Handle Admin Login (Strictly checks the 2 authorized credentials)
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setAdminAuthError(null);
@@ -182,24 +167,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
       <div className="absolute bottom-10 right-10 w-80 h-80 bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none" />
 
       {/* Top Header */}
-      <header className="flex items-center justify-between max-w-6xl w-full mx-auto z-10">
+      <header className="flex items-center justify-between max-w-5xl w-full mx-auto z-10">
         <div className="flex items-center space-x-3">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Shield className="w-6 h-6 text-white" />
           </div>
           <div>
             <h1 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-              Online Education & Examination Platform
+              Offline Examination Platform
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">
-                SMVEC AI&DS Dataset (2025-2029)
+                v1.0 Kiosk
               </span>
             </h1>
-            <p className="text-xs text-slate-400">Department of Artificial Intelligence & Data Science</p>
+            <p className="text-xs text-slate-400">Department of AI & Data Science • SMVEC</p>
           </div>
         </div>
 
         <div className="flex items-center space-x-2">
-          <span className="text-xs text-slate-400">Database:</span>
+          <span className="text-xs text-slate-400">Status:</span>
           <span
             className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
               isOnline
@@ -207,140 +192,91 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
                 : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
             }`}
           >
-            {isOnline ? `Supabase Connected (${students.length} Students)` : 'Offline Mode'}
+            {isOnline ? 'Online (Supabase Connected)' : 'Offline Kiosk Mode'}
           </span>
         </div>
       </header>
 
       {/* Center Auth Card */}
-      <div className="max-w-2xl w-full mx-auto my-auto z-10 py-4">
+      <div className="max-w-md w-full mx-auto my-auto z-10 py-4">
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-md">
           {/* Role Switcher Pill */}
           <div className="bg-slate-950 p-1.5 rounded-2xl border border-slate-800 flex items-center mb-6">
             <button
               type="button"
-              onClick={() => setSelectedRole('student')}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${
+              onClick={() => {
+                setSelectedRole('student');
+                setStudentAuthError(null);
+              }}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${
                 selectedRole === 'student'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <GraduationCap className="w-4 h-4" />
-              <span>Student Authentication ({students.length} Registered)</span>
+              <span>Student Login</span>
             </button>
 
             <button
               type="button"
-              onClick={() => setSelectedRole('admin')}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${
+              onClick={() => {
+                setSelectedRole('admin');
+                setAdminAuthError(null);
+              }}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${
                 selectedRole === 'admin'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <Layers className="w-4 h-4" />
-              <span>Admin Portal (Authorized Only)</span>
+              <span>Admin Portal</span>
             </button>
           </div>
 
           {selectedRole === 'student' ? (
-            /* STUDENT LOGIN FORM WITH DATASET SEARCH */
+            /* CLEAN STUDENT LOGIN (NO LISTING, EMAIL + ENROLLMENT NUMBER AS PASSWORD) */
             <form onSubmit={handleStudentSubmit} className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    Select Your Profile (AI&DS Batch 2025-2029)
-                  </label>
-                  {/* Section Filters */}
-                  <div className="flex items-center space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                    {['All', 'A', 'B', 'C', 'D', 'E'].map((sec) => (
-                      <button
-                        key={sec}
-                        type="button"
-                        onClick={() => setSelectedSection(sec)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
-                          selectedSection === sec
-                            ? 'bg-blue-600 text-white'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        Sec {sec}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Search Bar */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
+                  College Email Address
+                </label>
                 <div className="relative">
-                  <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
                   <input
                     type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by Name, Register No (e.g. 25UAI002), or Enrollment No..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white outline-none focus:border-blue-500 transition"
+                    required
+                    value={studentEmail}
+                    onChange={(e) => setStudentEmail(e.target.value)}
+                    placeholder="e.g. btechaids2511156@smvec.ac.in"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white outline-none focus:border-blue-500 transition font-medium"
                   />
                 </div>
-
-                {/* Scrollable Student Selection Grid */}
-                <div className="max-h-48 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl p-2 space-y-1.5 divide-y divide-slate-900">
-                  {isLoadingStudents ? (
-                    <div className="p-4 text-center text-xs text-slate-500">
-                      Loading student records from Supabase...
-                    </div>
-                  ) : filteredStudents.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-500">
-                      No matching student found in database.
-                    </div>
-                  ) : (
-                    filteredStudents.map((s) => {
-                      const isSelected = selectedStudent?.register_number === s.register_number;
-                      return (
-                        <div
-                          key={s.id || s.register_number}
-                          onClick={() => setSelectedStudent(s)}
-                          className={`p-2.5 rounded-lg cursor-pointer flex items-center justify-between transition ${
-                            isSelected
-                              ? 'bg-blue-600/20 border border-blue-500/40 text-white'
-                              : 'hover:bg-slate-900/60 text-slate-300'
-                          }`}
-                        >
-                          <div>
-                            <p className="font-bold text-xs flex items-center space-x-2">
-                              <span>{s.name}</span>
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                Sec {s.section}
-                              </span>
-                            </p>
-                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                              Reg: {s.register_number} • Enr: {s.enrollment_number} • {s.department}
-                            </p>
-                          </div>
-                          {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Use your registered SMVEC college email or register number.
+                </p>
               </div>
 
-              {/* Selected Profile Card Preview */}
-              {selectedStudent && (
-                <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Active Examinee:</span>
-                    <p className="font-bold text-white text-sm">{selectedStudent.name}</p>
-                    <p className="text-[11px] text-blue-400 font-mono">
-                      {selectedStudent.register_number} • Section {selectedStudent.section} • {selectedStudent.department}
-                    </p>
-                  </div>
-                  <div className="text-right text-[11px] text-slate-400 font-mono">
-                    <p>{selectedStudent.college_email || `${selectedStudent.register_number.toLowerCase()}@smvec.ac.in`}</p>
-                    <p className="text-emerald-400 font-bold">Verified in DB</p>
-                  </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
+                  Password (Enrollment Number)
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                  <input
+                    type="password"
+                    required
+                    value={studentPassword}
+                    onChange={(e) => setStudentPassword(e.target.value)}
+                    placeholder="Enter your Enrollment Number (e.g. 2511156)"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white outline-none focus:border-blue-500 transition font-mono tracking-wider"
+                  />
                 </div>
-              )}
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Your official 7-digit enrollment number acts as your password.
+                </p>
+              </div>
 
               {studentAuthError && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex items-center space-x-2">
@@ -351,10 +287,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
 
               <button
                 type="submit"
-                disabled={!selectedStudent}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/25 transition flex items-center justify-center space-x-2"
+                disabled={isVerifyingStudent}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/25 transition flex items-center justify-center space-x-2 mt-2"
               >
-                <span>Launch Student Examination Portal</span>
+                <span>{isVerifyingStudent ? 'Verifying Credentials...' : 'Sign In to Student Portal'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
@@ -372,7 +308,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
                     required
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
-                    placeholder="e.g. facadmin@offlinecode.com or stuadmin@offlinecode.com"
+                    placeholder="facadmin@offlinecode.com or stuadmin@offlinecode.com"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white outline-none focus:border-blue-500 transition font-medium"
                   />
                 </div>
@@ -390,7 +326,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
                     placeholder="••••••••••••••"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white outline-none focus:border-blue-500 transition"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white outline-none focus:border-blue-500 transition font-mono"
                   />
                 </div>
               </div>
@@ -409,54 +345,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
                 <span>Authenticate as Administrator</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-
-              {/* 1-Click Fast Login for the Two Authorized Admin Accounts */}
-              <div className="pt-3 border-t border-slate-800 space-y-2">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold block">
-                  Authorized Administrator Accounts (Click to Fill):
-                </span>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {AUTHORIZED_ADMINS.map((admin) => (
-                    <button
-                      key={admin.email}
-                      type="button"
-                      onClick={() => {
-                        setAdminEmail(admin.email);
-                        setAdminPassword(admin.pass);
-                        setAdminAuthError(null);
-                      }}
-                      className="p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-left transition flex flex-col justify-between"
-                    >
-                      <div>
-                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                          {admin.roleLabel}
-                        </span>
-                        <p className="text-xs font-bold text-white mt-1">{admin.email}</p>
-                      </div>
-                      <p className="text-[10px] text-slate-400 font-mono mt-1">Pass: {admin.pass}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </form>
           )}
         </div>
       </div>
 
       {/* Footer Info */}
-      <footer className="max-w-6xl w-full mx-auto grid grid-cols-3 gap-4 pt-4 border-t border-slate-900 text-xs text-slate-500 z-10">
+      <footer className="max-w-5xl w-full mx-auto grid grid-cols-3 gap-4 pt-4 border-t border-slate-900 text-xs text-slate-500 z-10">
         <div className="flex items-center space-x-2">
           <Cpu className="w-4 h-4 text-blue-400 flex-shrink-0" />
           <span>Local Compiler Engine (Python 3, C++, C, Java)</span>
         </div>
         <div className="flex items-center space-x-2 text-center justify-center">
           <Shield className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-          <span>Strict Offline Anti-Cheat & SHA-256 Seal</span>
+          <span>Anti-Cheat Kiosk Lockdown Enabled</span>
         </div>
         <div className="flex items-center space-x-2 justify-end">
           <Sparkles className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-          <span>280 Verified Students in Supabase DB</span>
+          <span>Cross-Platform macOS & Windows (.exe)</span>
         </div>
       </footer>
     </div>

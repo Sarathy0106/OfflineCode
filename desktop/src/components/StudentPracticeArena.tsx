@@ -43,10 +43,10 @@ const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     inputFormat: 'Line 1: N (array length)\nLine 2: N space-separated numbers\nLine 3: target sum',
     outputFormat: 'Two space-separated indices (0-indexed)',
     starterTemplates: {
-      python: 'import sys\n\ndef solve():\n    lines = sys.stdin.read().split()\n    if not lines: return\n    n = int(lines[0])\n    nums = [int(x) for x in lines[1:n+1]]\n    target = int(lines[n+1])\n    \n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            print(f"{lookup[diff]} {i}")\n            return\n        lookup[num] = i\n\nif __name__ == "__main__":\n    solve()\n',
-      cpp: '#include <iostream>\n#include <vector>\n#include <unordered_map>\nusing namespace std;\n\nint main() {\n    int n;\n    if (!(cin >> n)) return 0;\n    vector<int> nums(n);\n    for(int i = 0; i < n; i++) cin >> nums[i];\n    int target;\n    cin >> target;\n    \n    unordered_map<int, int> lookup;\n    for(int i = 0; i < n; i++) {\n        int diff = target - nums[i];\n        if (lookup.count(diff)) {\n            cout << lookup[diff] << " " << i << endl;\n            return 0;\n        }\n        lookup[nums[i]] = i;\n    }\n    return 0;\n}\n',
-      c: '#include <stdio.h>\n\nint main() {\n    int n;\n    if (scanf("%d", &n) != 1) return 0;\n    int nums[1000];\n    for (int i = 0; i < n; i++) scanf("%d", &nums[i]);\n    int target;\n    scanf("%d", &target);\n    for (int i = 0; i < n; i++) {\n        for (int j = i + 1; j < n; j++) {\n            if (nums[i] + nums[j] == target) {\n                printf("%d %d\\n", i, j);\n                return 0;\n            }\n        }\n    }\n    return 0;\n}\n',
-      java: 'import java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int[] nums = new int[n];\n        for (int i = 0; i < n; i++) nums[i] = sc.nextInt();\n        int target = sc.nextInt();\n        Map<Integer, Integer> map = new HashMap<>();\n        for (int i = 0; i < n; i++) {\n            int diff = target - nums[i];\n            if (map.containsKey(diff)) {\n                System.out.println(map.get(diff) + " " + i);\n                return;\n            }\n            map.put(nums[i], i);\n        }\n    }\n}\n'
+      python: '# Write your solution here\n',
+      cpp: '// Write your solution here\n',
+      c: '// Write your solution here\n',
+      java: '// Write your solution here\n'
     },
     testCases: [
       { input: '4\n2 7 11 15\n9', expected_output: '0 1', explanation: '2 + 7 = 9 at indices 0 and 1' },
@@ -65,10 +65,10 @@ const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     inputFormat: 'Line 1: String S',
     outputFormat: 'Print "YES" if palindrome, else "NO"',
     starterTemplates: {
-      python: 'import sys\n\ndef is_palindrome():\n    s = sys.stdin.read().strip()\n    filtered = [c.lower() for c in s if c.isalnum()]\n    if filtered == filtered[::-1]:\n        print("YES")\n    else:\n        print("NO")\n\nif __name__ == "__main__":\n    is_palindrome()\n',
-      cpp: '#include <iostream>\n#include <string>\n#include <cctype>\nusing namespace std;\n\nint main() {\n    string s;\n    if (getline(cin, s)) {\n        string filtered = "";\n        for(char c : s) if (isalnum(c)) filtered += tolower(c);\n        int l = 0, r = filtered.size() - 1;\n        bool ok = true;\n        while(l < r) {\n            if (filtered[l++] != filtered[r--]) { ok = false; break; }\n        }\n        cout << (ok ? "YES" : "NO") << endl;\n    }\n    return 0;\n}\n',
-      c: '#include <stdio.h>\n#include <ctype.h>\n#include <string.h>\n\nint main() {\n    char s[1000];\n    if (fgets(s, sizeof(s), stdin)) {\n        char clean[1000];\n        int len = 0;\n        for (int i = 0; s[i]; i++) {\n            if (isalnum((unsigned char)s[i])) clean[len++] = tolower((unsigned char)s[i]);\n        }\n        int l = 0, r = len - 1, ok = 1;\n        while (l < r) {\n            if (clean[l++] != clean[r--]) { ok = 0; break; }\n        }\n        printf("%s\\n", ok ? "YES" : "NO");\n    }\n    return 0;\n}\n',
-      java: 'import java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) {\n            String s = sc.nextLine();\n            StringBuilder sb = new StringBuilder();\n            for (char c : s.toCharArray()) {\n                if (Character.isLetterOrDigit(c)) sb.append(Character.toLowerCase(c));\n            }\n            String orig = sb.toString();\n            String rev = sb.reverse().toString();\n            System.out.println(orig.equals(rev) ? "YES" : "NO");\n        }\n    }\n}\n'
+      python: '# Write your solution here\n',
+      cpp: '// Write your solution here\n',
+      c: '// Write your solution here\n',
+      java: '// Write your solution here\n'
     },
     testCases: [
       { input: 'A man, a plan, a canal: Panama', expected_output: 'YES', explanation: '"amanaplanacanalpanama" reads the same forward and backward' },
@@ -87,10 +87,10 @@ const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     inputFormat: 'Line 1: Integer n',
     outputFormat: 'Print the n-th Fibonacci number',
     starterTemplates: {
-      python: 'import sys\n\ndef fib():\n    val = sys.stdin.read().strip()\n    if not val: return\n    n = int(val)\n    if n <= 1: \n        print(n)\n        return\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    print(b)\n\nif __name__ == "__main__":\n    fib()\n',
-      cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    int n;\n    if (cin >> n) {\n        if (n <= 1) { cout << n << endl; return 0; }\n        int a = 0, b = 1;\n        for(int i = 2; i <= n; i++) {\n            int c = a + b;\n            a = b;\n            b = c;\n        }\n        cout << b << endl;\n    }\n    return 0;\n}\n',
-      c: '#include <stdio.h>\n\nint main() {\n    int n;\n    if (scanf("%d", &n) == 1) {\n        if (n <= 1) { printf("%d\\n", n); return 0; }\n        int a = 0, b = 1;\n        for (int i = 2; i <= n; i++) {\n            int c = a + b; a = b; b = c;\n        }\n        printf("%d\\n", b);\n    }\n    return 0;\n}\n',
-      java: 'import java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextInt()) {\n            int n = sc.nextInt();\n            if (n <= 1) { System.out.println(n); return; }\n            int a = 0, b = 1;\n            for (int i = 2; i <= n; i++) {\n                int c = a + b; a = b; b = c;\n            }\n            System.out.println(b);\n        }\n    }\n}\n'
+      python: '# Write your solution here\n',
+      cpp: '// Write your solution here\n',
+      c: '// Write your solution here\n',
+      java: '// Write your solution here\n'
     },
     testCases: [
       { input: '2', expected_output: '1', explanation: 'F(2) = F(1) + F(0) = 1 + 0 = 1' },
@@ -101,10 +101,10 @@ const PRACTICE_QUESTIONS: PracticeQuestion[] = [
 ];
 
 const DEFAULT_PLAYGROUND_TEMPLATES: Record<string, string> = {
-  python: `# Offline Python 3 Playground\ndef main():\n    name = input("Enter your name: ")\n    print(f"Hello, {name}! Welcome to the Offline Code Practice Arena.")\n\nif __name__ == '__main__':\n    main()\n`,
-  cpp: `// Offline C++ Playground (Clang 17)\n#include <iostream>\n#include <string>\nusing namespace std;\n\nint main() {\n    string name;\n    cout << "Enter your name: ";\n    if (cin >> name) {\n        cout << "Hello, " << name << "! C++ is ready." << endl;\n    }\n    return 0;\n}\n`,
-  c: `// Offline C Playground\n#include <stdio.h>\n\nint main() {\n    char name[100];\n    printf("Enter your name: ");\n    if (scanf("%99s", name) == 1) {\n        printf("Hello, %s! C compilation successful.\\n", name);\n    }\n    return 0;\n}\n`,
-  java: `// Offline Java Playground\nimport java.util.Scanner;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        System.out.print("Enter your name: ");\n        if (scanner.hasNext()) {\n            String name = scanner.next();\n            System.out.println("Hello, " + name + "! Java runtime active.");\n        }\n    }\n}\n`
+  python: '# Write your code here\n',
+  cpp: '// Write your code here\n',
+  c: '// Write your code here\n',
+  java: '// Write your code here\n'
 };
 
 export const StudentPracticeArena: React.FC = () => {
