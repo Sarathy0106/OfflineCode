@@ -3,6 +3,7 @@ package com.offlinecode.ui
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -28,7 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -111,6 +115,7 @@ fun MainScreen(
     val editorValue by viewModel.editorValue.collectAsState()
     val runEvents by viewModel.runEvents.collectAsState()
     val isRunning by viewModel.isRunning.collectAsState()
+    val executionStatus by viewModel.executionStatus.collectAsState()
     val fontSizeSp by viewModel.fontSizeSp.collectAsState()
     val timeoutSeconds by viewModel.timeoutSeconds.collectAsState()
     val savedSnippets by viewModel.savedSnippets.collectAsState()
@@ -118,6 +123,22 @@ fun MainScreen(
     val selectedTheme by viewModel.selectedTheme.collectAsState()
     val cppOptimization by viewModel.cppOptimization.collectAsState()
     val cppWarnings by viewModel.cppWarnings.collectAsState()
+
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val haptic = LocalHapticFeedback.current
+
+    LaunchedEffect(executionStatus) {
+        val status = executionStatus
+        if (status is ExecutionStatus.Completed) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            val msg = if (status.exitCode == 0) {
+                "✓ Run finished in ${status.durationMs}ms"
+            } else {
+                "⚠️ Exited with code ${status.exitCode} (${status.durationMs}ms)"
+            }
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // Find & Replace
     val isSearchOpen by viewModel.isSearchOpen.collectAsState()
@@ -286,11 +307,50 @@ fun MainScreen(
                         tint = Color.LightGray
                     )
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Execution Status Badge (Always informs user of running state or last run result)
+                    if (isRunning) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF0D2D44))
+                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(10.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFF00E5FF)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Running...", fontSize = 10.sp, color = Color(0xFF00E5FF), fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    } else if (executionStatus is ExecutionStatus.Completed) {
+                        val status = executionStatus as ExecutionStatus.Completed
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (status.exitCode == 0) Color(0xFF1B5E20) else Color(0xFFB71C1C))
+                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (status.exitCode == 0) "✓ ${status.durationMs}ms" else "Exit ${status.exitCode} (${status.durationMs}ms)",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
 
                     if (isRunning) {
                         Button(
-                            onClick = { viewModel.stopCode() },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.stopCode()
+                            },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
                             shape = RoundedCornerShape(5.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
@@ -306,7 +366,11 @@ fun MainScreen(
                         }
                     } else {
                         Button(
-                            onClick = { viewModel.runCode() },
+                            onClick = {
+                                keyboardController?.hide()
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.runCode()
+                            },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
                             shape = RoundedCornerShape(5.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
@@ -318,6 +382,17 @@ fun MainScreen(
                         }
                     }
                 }
+            }
+
+            // Top Indeterminate Progress Bar during Compilation & Execution
+            if (isRunning) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp),
+                    color = Color(0xFF00E5FF),
+                    trackColor = Color(0xFF0F263B)
+                )
             }
 
             // Find & Replace Bar (Collapsible)

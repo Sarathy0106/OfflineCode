@@ -20,6 +20,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
+sealed class ExecutionStatus {
+    object Idle : ExecutionStatus()
+    object Running : ExecutionStatus()
+    data class Completed(val exitCode: Int, val durationMs: Long, val timestamp: Long = System.currentTimeMillis()) : ExecutionStatus()
+}
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val client = CodeRunnerClient(application)
@@ -40,6 +46,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isRunning = MutableStateFlow(false)
     val isRunning = _isRunning.asStateFlow()
+
+    private val _executionStatus = MutableStateFlow<ExecutionStatus>(ExecutionStatus.Idle)
+    val executionStatus = _executionStatus.asStateFlow()
+    private var runCount = 0
 
     private val _fontSizeSp = MutableStateFlow(14f)
     val fontSizeSp = _fontSizeSp.asStateFlow()
@@ -558,8 +568,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             "java" -> "Java"
             else -> lang.uppercase()
         }
-        _runEvents.value = listOf(RunEvent.Stdout("[Compiling & Running $langDisplay...]\n"))
+        runCount++
+        val timeFormat = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+        _runEvents.value = listOf(RunEvent.Stdout("─── Run #$runCount: $langDisplay at $timeFormat ───\n"))
         _isRunning.value = true
+        _executionStatus.value = ExecutionStatus.Running
 
         val source = _editorValue.value.text
         val limits = Limits(timeoutSeconds = _timeoutSeconds.value, memoryLimitMb = 256)
@@ -572,13 +585,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         runJob = viewModelScope.launch {
+            var finalExit: RunEvent.Exit? = null
             client.execute(targetLang, source, stdinFlow, limits).collect { event ->
                 _runEvents.value = _runEvents.value + event
                 if (event is RunEvent.Exit) {
+                    finalExit = event
                     _isRunning.value = false
+                    _executionStatus.value = ExecutionStatus.Completed(event.code, event.millis)
                 }
             }
-            _isRunning.value = false
+            if (_isRunning.value) {
+                _isRunning.value = false
+                val code = finalExit?.code ?: 0
+                val millis = finalExit?.millis ?: 0L
+                _executionStatus.value = ExecutionStatus.Completed(code, millis)
+            }
         }
     }
 
@@ -586,6 +607,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         client.stop()
         runJob?.cancel()
         _isRunning.value = false
+        _executionStatus.value = ExecutionStatus.Completed(-1, 0)
         _runEvents.value = _runEvents.value + RunEvent.Stderr("\n[Execution stopped by user]\n")
         _runEvents.value = _runEvents.value + RunEvent.Exit(-1, 0)
     }
