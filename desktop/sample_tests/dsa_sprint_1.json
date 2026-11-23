@@ -1,0 +1,84 @@
+{
+  "test_title": "Data Structures & Algorithms - Sprint 1",
+  "subject": "Computer Science",
+  "topic": "Arrays & Strings",
+  "duration_minutes": 60,
+  "total_marks": 100,
+  "passing_percentage": 50,
+  "instructions": [
+    "Turn off Wi-Fi before starting the examination.",
+    "Exam runs in locked full-screen kiosk mode.",
+    "Code is compiled and verified 100% offline.",
+    "Answers are saved locally and synced after re-enabling Wi-Fi."
+  ],
+  "questions": [
+    {
+      "id": "q1",
+      "title": "Two Sum",
+      "difficulty": "Easy",
+      "marks": 50,
+      "description": "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.",
+      "constraints": "2 <= nums.length <= 10^4\n-10^9 <= nums[i] <= 10^9\nOnly one valid answer exists.",
+      "input_format": "Line 1: N (array length)\nLine 2: N space-separated integers\nLine 3: target integer",
+      "output_format": "Two space-separated indices (0-indexed)",
+      "allowed_languages": ["python", "cpp", "java", "c"],
+      "starter_templates": {
+        "python": "import sys\n\ndef solve():\n    lines = sys.stdin.read().split()\n    if not lines: return\n    n = int(lines[0])\n    nums = [int(x) for x in lines[1:n+1]]\n    target = int(lines[n+1])\n    \n    lookup = {}\n    for i, x in enumerate(nums):\n        diff = target - x\n        if diff in lookup:\n            print(f\"{lookup[diff]} {i}\")\n            return\n        lookup[x] = i\n\nif __name__ == '__main__':\n    solve()\n",
+        "cpp": "#include <iostream>\n#include <vector>\n#include <unordered_map>\nusing namespace std;\n\nint main() {\n    int n;\n    if (!(cin >> n)) return 0;\n    vector<int> nums(n);\n    for(int i = 0; i < n; i++) cin >> nums[i];\n    int target;\n    cin >> target;\n    \n    unordered_map<int, int> lookup;\n    for(int i = 0; i < n; i++) {\n        int diff = target - nums[i];\n        if (lookup.count(diff)) {\n            cout << lookup[diff] << \" \" << i << endl;\n            return 0;\n        }\n        lookup[nums[i]] = i;\n    }\n    return 0;\n}\n",
+        "java": "import java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int[] nums = new int[n];\n        for(int i = 0; i < n; i++) nums[i] = sc.nextInt();\n        int target = sc.nextInt();\n        \n        Map<Integer, Integer> map = new HashMap<>();\n        for(int i = 0; i < n; i++) {\n            int diff = target - nums[i];\n            if (map.containsKey(diff)) {\n                System.out.println(map.get(diff) + \" \" + i);\n                return;\n            }\n            map.put(nums[i], i);\n        }\n    }\n}\n",
+        "c": "#include <stdio.h>\n\nint main() {\n    int n;\n    if (scanf(\"%d\", &n) != 1) return 0;\n    int nums[10000];\n    for(int i = 0; i < n; i++) scanf(\"%d\", &nums[i]);\n    int target;\n    scanf(\"%d\", &target);\n    \n    for(int i = 0; i < n; i++) {\n        for(int j = i + 1; j < n; j++) {\n            if (nums[i] + nums[j] == target) {\n                printf(\"%d %d\\n\", i, j);\n                return 0;\n            }\n        }\n    }\n    return 0;\n}\n"
+      },
+      "sample_test_cases": [
+        {
+          "input": "4\n2 7 11 15\n9",
+          "expected_output": "0 1",
+          "explanation": "nums[0] + nums[1] = 2 + 7 = 9"
+        }
+      ],
+      "hidden_test_cases": [
+        {
+          "input": "3\n3 2 4\n6",
+          "expected_output": "1 2"
+        },
+        {
+          "input": "2\n3 3\n6",
+          "expected_output": "0 1"
+        }
+      ]
+    },
+    {
+      "id": "q2",
+      "title": "Palindrome String",
+      "difficulty": "Easy",
+      "marks": 50,
+      "description": "Given a string S, determine whether it is a palindrome considering only alphanumeric characters and ignoring cases.",
+      "constraints": "1 <= S.length <= 10^5",
+      "input_format": "Line 1: String S",
+      "output_format": "Print 'YES' if palindrome, else 'NO'",
+      "allowed_languages": ["python", "cpp", "java", "c"],
+      "starter_templates": {
+        "python": "import sys\n\ndef solve():\n    s = sys.stdin.read().strip()\n    filtered = ''.join(c.lower() for c in s if c.isalnum())\n    if filtered == filtered[::-1]:\n        print('YES')\n    else:\n        print('NO')\n\nif __name__ == '__main__':\n    solve()\n",
+        "cpp": "#include <iostream>\n#include <string>\n#include <cctype>\nusing namespace std;\n\nint main() {\n    string s, filtered = \"\";\n    if (getline(cin, s)) {\n        for(char c : s) if (isalnum(c)) filtered += tolower(c);\n        int l = 0, r = filtered.size() - 1;\n        bool pal = true;\n        while(l < r) {\n            if (filtered[l++] != filtered[r--]) { pal = false; break; }\n        }\n        cout << (pal ? \"YES\" : \"NO\") << endl;\n    }\n    return 0;\n}\n",
+        "java": "import java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) {\n            String s = sc.nextLine();\n            StringBuilder sb = new StringBuilder();\n            for(char c : s.toCharArray()) {\n                if (Character.isLetterOrDigit(c)) sb.append(Character.toLowerCase(c));\n            }\n            String orig = sb.toString();\n            String rev = sb.reverse().toString();\n            System.out.println(orig.equals(rev) ? \"YES\" : \"NO\");\n        }\n    }\n}\n",
+        "c": "#include <stdio.h>\n#include <ctype.h>\n#include <string.h>\n\nint main() {\n    char s[10000];\n    if (fgets(s, sizeof(s), stdin)) {\n        char clean[10000];\n        int idx = 0;\n        for(int i = 0; s[i]; i++) {\n            if (isalnum((unsigned char)s[i])) clean[idx++] = tolower((unsigned char)s[i]);\n        }\n        int l = 0, r = idx - 1, pal = 1;\n        while(l < r) {\n            if (clean[l++] != clean[r--]) { pal = 0; break; }\n        }\n        printf(\"%s\\n\", pal ? \"YES\" : \"NO\");\n    }\n    return 0;\n}\n"
+      },
+      "sample_test_cases": [
+        {
+          "input": "A man, a plan, a canal: Panama",
+          "expected_output": "YES",
+          "explanation": "amanaplanacanalpanama is a palindrome"
+        }
+      ],
+      "hidden_test_cases": [
+        {
+          "input": "race a car",
+          "expected_output": "NO"
+        },
+        {
+          "input": "Was it a car or a cat I saw?",
+          "expected_output": "YES"
+        }
+      ]
+    }
+  ]
+}
