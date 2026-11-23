@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor, { loader } from '@monaco-editor/react';
+import * as monaco from 'monaco-editor';
 
-// Configure Monaco Editor to load 100% offline from local static assets
+// Configure Monaco Editor directly with the local bundled monaco instance
+// This guarantees 100% offline operation with zero CDN network requests!
 try {
-  loader.config({
-    paths: {
-      vs: './vs'
-    }
-  });
+  loader.config({ monaco });
 } catch (e) {
-  console.warn('Monaco offline loader init warning:', e);
+  console.warn('Monaco bundled loader init:', e);
 }
 
 interface OfflineCodeEditorProps {

@@ -53,7 +53,7 @@ export interface IElectronAPI {
 
   saveLocal: (key: string, data: any) => Promise<boolean>;
   getLocal: (key: string) => Promise<any>;
-  clearLocal: (key: string) => Promise<boolean>;
+  clearLocal: (key: string) => Promise<boolean>
   hashData: (data: string) => Promise<string>;
 }
 

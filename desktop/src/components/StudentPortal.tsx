@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Test, TestAttempt } from '../types';
+import { StudentPracticeArena } from './StudentPracticeArena';
 import {
   BookOpen,
   Clock,
@@ -13,7 +14,9 @@ import {
   Maximize2,
   RefreshCw,
   Trophy,
-  History
+  History,
+  Code2,
+  Terminal
 } from 'lucide-react';
 
 interface StudentPortalProps {
@@ -29,6 +32,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
   isOnline,
   onStartExam
 }) => {
+  const [activeTab, setActiveTab] = useState<'exams' | 'practice'>('exams');
   const [tests, setTests] = useState<Test[]>([]);
   const [myAttempts, setMyAttempts] = useState<TestAttempt[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -83,27 +87,76 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-950 text-slate-100">
-      {/* Student Welcome Banner */}
-      <div className="bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-slate-900 border border-blue-500/20 rounded-2xl p-6 flex items-center justify-between">
-        <div>
-          <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
-            Student Examination Dashboard
-          </span>
-          <h2 className="text-2xl font-bold text-white mt-1">Welcome back, {studentName}</h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Roll / Student ID: <span className="font-mono text-slate-300 font-semibold">{studentId}</span> • 100% Offline Kiosk Enabled
-          </p>
+    <div className="flex-1 flex flex-col bg-slate-950 text-slate-100 overflow-hidden">
+      {/* Student Portal Navigation Bar */}
+      <div className="h-14 bg-slate-900 border-b border-slate-800 px-8 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setActiveTab('exams')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'exams'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Examinations ({tests.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('practice')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'practice'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Code2 className="w-4 h-4" />
+            <span>Practice Arena & Playground</span>
+          </button>
         </div>
 
-        <button
-          onClick={fetchStudentData}
-          className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Refresh Exams</span>
-        </button>
+        <div className="flex items-center space-x-3 text-xs text-slate-400">
+          <span className="font-mono">{studentName} ({studentId})</span>
+          {activeTab === 'exams' && (
+            <button
+              onClick={fetchStudentData}
+              className="flex items-center space-x-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Render Selected View */}
+      {activeTab === 'practice' ? (
+        <StudentPracticeArena />
+      ) : (
+        <div className="flex-1 overflow-y-auto p-8 space-y-8">
+          {/* Student Welcome Banner */}
+          <div className="bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-slate-900 border border-blue-500/20 rounded-2xl p-6 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                Student Examination Dashboard
+              </span>
+              <h2 className="text-2xl font-bold text-white mt-1">Welcome back, {studentName}</h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Roll / Student ID: <span className="font-mono text-slate-300 font-semibold">{studentId}</span> • 100% Offline Kiosk Enabled
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setActiveTab('practice')}
+                className="flex items-center space-x-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-xl text-xs font-bold border border-blue-500/20 transition shadow"
+              >
+                <Terminal className="w-4 h-4" />
+                <span>Open Practice Editor</span>
+              </button>
+            </div>
+          </div>
 
       {/* Available Exams Section */}
       <div className="space-y-4">
@@ -226,6 +279,8 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
           </div>
         )}
       </div>
+    </div>
+  )}
 
       {/* Pre-Flight Lockdown Gate Modal */}
       {selectedTestForLockdown && (
