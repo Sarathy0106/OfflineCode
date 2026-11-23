@@ -16,7 +16,14 @@ import {
   Trophy,
   History,
   Code2,
-  Terminal
+  Terminal,
+  LayoutDashboard,
+  Check,
+  ArrowRight,
+  TrendingUp,
+  Flame,
+  Layers,
+  FileCheck2
 } from 'lucide-react';
 
 interface StudentPortalProps {
@@ -32,12 +39,15 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
   isOnline,
   onStartExam
 }) => {
-  const [activeTab, setActiveTab] = useState<'exams' | 'practice'>('exams');
+  // 4 Student Pages extracted from user handwritten diagram:
+  // 1. Dashboard, 2. Test, 3. Practice, 4. Result
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'test' | 'practice' | 'result'>('dashboard');
   const [tests, setTests] = useState<Test[]>([]);
   const [myAttempts, setMyAttempts] = useState<TestAttempt[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTestForLockdown, setSelectedTestForLockdown] = useState<Test | null>(null);
   const [isKioskActive, setIsKioskActive] = useState(false);
+  const [selectedAttemptInspect, setSelectedAttemptInspect] = useState<TestAttempt | null>(null);
 
   // Fetch tests & student's past attempts
   const fetchStudentData = async () => {
@@ -100,201 +110,427 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
     setSelectedTestForLockdown(null);
   };
 
+  const completedCount = myAttempts.length;
+  const pendingCount = Math.max(0, tests.length - completedCount);
+  const averagePercentage = myAttempts.length > 0
+    ? Math.round(myAttempts.reduce((acc, a) => acc + (a.percentage || 0), 0) / myAttempts.length)
+    : 0;
+
   return (
-    <div className="flex-1 flex flex-col bg-slate-950 text-slate-100 overflow-hidden">
-      {/* Student Portal Navigation Bar */}
+    <div className="flex-1 flex flex-col bg-slate-950 text-slate-100 overflow-hidden select-none">
+      {/* Student Portal Navigation Bar (4 Pages: Dashboard, Test, Practice, Result) */}
       <div className="h-14 bg-slate-900 border-b border-slate-800 px-8 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setActiveTab('exams')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-              activeTab === 'exams'
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'dashboard'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>1. Dashboard</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('test')}
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'test'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>Examinations ({tests.length})</span>
+            <span>2. Test ({tests.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('practice')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
               activeTab === 'practice'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
             }`}
           >
             <Code2 className="w-4 h-4" />
-            <span>Practice Arena & Playground</span>
+            <span>3. Practice Arena</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('result')}
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'result'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Trophy className="w-4 h-4" />
+            <span>4. Result ({myAttempts.length})</span>
           </button>
         </div>
 
         <div className="flex items-center space-x-3 text-xs text-slate-400">
-          <span className="font-mono">{studentName} ({studentId})</span>
-          {activeTab === 'exams' && (
-            <button
-              onClick={fetchStudentData}
-              className="flex items-center space-x-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
-            </button>
-          )}
+          <span className="font-mono bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700 text-slate-200 font-semibold">
+            {studentName} ({studentId})
+          </span>
+          <button
+            onClick={fetchStudentData}
+            className="flex items-center space-x-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
+          </button>
         </div>
       </div>
 
       {/* Render Selected View */}
       {activeTab === 'practice' ? (
+        /* PAGE 3: PRACTICE ARENA & PLAYGROUND */
         <StudentPracticeArena />
-      ) : (
-        <div className="flex-1 overflow-y-auto p-8 space-y-8">
-          {/* Student Welcome Banner */}
-          <div className="bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-slate-900 border border-blue-500/20 rounded-2xl p-6 flex items-center justify-between">
+      ) : activeTab === 'dashboard' ? (
+        /* PAGE 1: STUDENT DASHBOARD */
+        <div className="flex-1 overflow-y-auto p-8 space-y-6">
+          {/* Welcome Banner */}
+          <div className="bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-slate-900 border border-blue-500/20 rounded-3xl p-6 flex items-center justify-between shadow-xl">
             <div>
-              <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
-                Student Examination Dashboard
+              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
+                Student Education Dashboard
               </span>
               <h2 className="text-2xl font-bold text-white mt-1">Welcome back, {studentName}</h2>
               <p className="text-xs text-slate-400 mt-1">
-                Roll / Student ID: <span className="font-mono text-slate-300 font-semibold">{studentId}</span> • 100% Offline Kiosk Enabled
+                Candidate ID: <span className="font-mono text-slate-200 font-semibold">{studentId}</span> • 100% Offline Kiosk Mode Enabled
               </p>
             </div>
 
             <div className="flex items-center space-x-3">
               <button
+                onClick={() => setActiveTab('test')}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow transition"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>Take Examination</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('practice')}
-                className="flex items-center space-x-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-xl text-xs font-bold border border-blue-500/20 transition shadow"
+                className="flex items-center space-x-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-xl text-xs font-bold border border-blue-500/20 transition"
               >
                 <Terminal className="w-4 h-4" />
-                <span>Open Practice Editor</span>
+                <span>Open Code Playground</span>
               </button>
             </div>
           </div>
 
-      {/* Available Exams Section */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-          <BookOpen className="w-5 h-5 text-blue-400" />
-          <span>Available Coding Examinations ({tests.length})</span>
-        </h3>
+          {/* Metric Overview Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Available Tests</p>
+                <p className="text-2xl font-bold text-white">{tests.length}</p>
+                <span className="text-[10px] text-blue-400 font-semibold">{pendingCount} Pending</span>
+              </div>
+            </div>
 
-        {tests.length === 0 && !isLoading && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-400 text-xs">
-            No examinations published yet. Ask your Administrator to upload a test.
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Tests Completed</p>
+                <p className="text-2xl font-bold text-white">{completedCount}</p>
+                <span className="text-[10px] text-emerald-400 font-semibold">100% Sealed</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                <Code2 className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Practice Solved</p>
+                <p className="text-2xl font-bold text-white">4 Tasks</p>
+                <span className="text-[10px] text-indigo-400 font-semibold">Playground Active</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <Award className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Average Score</p>
+                <p className="text-2xl font-bold text-white">{averagePercentage > 0 ? `${averagePercentage}%` : 'N/A'}</p>
+                <span className="text-[10px] text-amber-400 font-semibold">Leaderboard Active</span>
+              </div>
+            </div>
           </div>
-        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {tests.map(test => {
-            const isAlreadyAttempted = myAttempts.some(a => a.test_id === test.id);
-            return (
-              <div
-                key={test.id}
-                className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 flex flex-col justify-between transition space-y-4"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      {test.subject}
+          {/* Quick Shortcuts Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                <BookOpen className="w-4 h-4 text-blue-400" />
+                <span>Next Available Examination</span>
+              </h3>
+              {tests.length > 0 ? (
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
+                      {tests[0].subject}
                     </span>
-                    <span className="text-xs text-slate-400 flex items-center space-x-1">
-                      <Clock className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{test.duration_minutes} Minutes</span>
-                    </span>
+                    <span className="text-xs text-slate-400 font-mono">{tests[0].duration_minutes} Mins</span>
                   </div>
-
-                  <h4 className="text-base font-bold text-white">{test.title}</h4>
-                  <p className="text-xs text-slate-400 mt-1">Topic: {test.topic || 'Coding'}</p>
-
-                  <div className="mt-4 flex items-center space-x-4 text-xs text-slate-300">
-                    <div>
-                      <span className="text-slate-500 text-[10px] block">QUESTIONS</span>
-                      <span className="font-bold">{test.questions?.length || 0} Coding Tasks</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 text-[10px] block">TOTAL MARKS</span>
-                      <span className="font-bold">{test.total_marks} Marks</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 text-[10px] block">PASS PERCENTAGE</span>
-                      <span className="font-bold">{test.passing_percentage}%</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-                  {isAlreadyAttempted ? (
-                    <span className="text-xs text-emerald-400 font-semibold flex items-center space-x-1">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Attempt Completed</span>
-                    </span>
-                  ) : (
-                    <span className="text-xs text-slate-400">Offline Safe</span>
-                  )}
-
+                  <h4 className="text-sm font-bold text-white">{tests[0].title}</h4>
+                  <p className="text-xs text-slate-400">Questions: {tests[0].questions?.length || 0} Coding Tasks • {tests[0].total_marks} Marks</p>
                   <button
-                    onClick={() => setSelectedTestForLockdown(test)}
-                    className="flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md transition"
+                    onClick={() => {
+                      setSelectedTestForLockdown(tests[0]);
+                      setActiveTab('test');
+                    }}
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2"
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>{isAlreadyAttempted ? 'Retake Exam' : 'Start Examination'}</span>
+                    <span>Proceed to Examination Gate</span>
                   </button>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              ) : (
+                <p className="text-xs text-slate-500">No pending examinations published.</p>
+              )}
+            </div>
 
-      {/* Past Submissions & Result History */}
-      <div className="space-y-4 pt-4">
-        <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-          <History className="w-5 h-5 text-indigo-400" />
-          <span>My Performance History ({myAttempts.length})</span>
-        </h3>
-
-        {myAttempts.length === 0 ? (
-          <p className="text-xs text-slate-500 italic">No previous exam records found.</p>
-        ) : (
-          <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                <tr>
-                  <th className="p-3.5">Exam Title</th>
-                  <th className="p-3.5">Score</th>
-                  <th className="p-3.5">Percentage</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5">Submitted On</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {myAttempts.map(att => (
-                  <tr key={att.id} className="hover:bg-slate-800/30">
-                    <td className="p-3.5 font-semibold text-white">
-                      {tests.find(t => t.id === att.test_id)?.title || 'Coding Sprint'}
-                    </td>
-                    <td className="p-3.5 font-bold text-slate-200">{att.total_score} / {att.max_score}</td>
-                    <td className="p-3.5 font-bold">{att.percentage}%</td>
-                    <td className="p-3.5">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                <History className="w-4 h-4 text-indigo-400" />
+                <span>Recent Exam Results</span>
+              </h3>
+              {myAttempts.length > 0 ? (
+                <div className="divide-y divide-slate-800 text-xs">
+                  {myAttempts.slice(0, 3).map(att => (
+                    <div key={att.id} className="py-2.5 flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-white">Score: {att.total_score}/{att.max_score} ({att.percentage}%)</p>
+                        <p className="text-[10px] text-slate-500">{att.submitted_at ? new Date(att.submitted_at).toLocaleDateString() : 'Recent'}</p>
+                      </div>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         att.passed ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
                       }`}>
                         {att.passed ? 'PASSED' : 'NOT QUALIFIED'}
                       </span>
-                    </td>
-                    <td className="p-3.5 text-slate-400">
-                      {att.submitted_at ? new Date(att.submitted_at).toLocaleString() : 'N/A'}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">No tests submitted yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'test' ? (
+        /* PAGE 2: TEST (EXAMINATIONS) */
+        <div className="flex-1 overflow-y-auto p-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                <BookOpen className="w-5 h-5 text-blue-400" />
+                <span>Available Coding Examinations ({tests.length})</span>
+              </h2>
+              <p className="text-xs text-slate-400">Offline exam payloads with anti-cheat full-screen kiosk enforcement.</p>
+            </div>
+          </div>
+
+          {tests.length === 0 && !isLoading && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center text-slate-400 text-xs">
+              No examinations published yet. Ask your Administrator to upload a test specification.
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {tests.map(test => {
+              const isAlreadyAttempted = myAttempts.some(a => a.test_id === test.id);
+              return (
+                <div
+                  key={test.id}
+                  className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 flex flex-col justify-between transition space-y-4 shadow-lg"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        {test.subject}
+                      </span>
+                      <span className="text-xs text-slate-400 flex items-center space-x-1">
+                        <Clock className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{test.duration_minutes} Minutes</span>
+                      </span>
+                    </div>
+
+                    <h4 className="text-base font-bold text-white">{test.title}</h4>
+                    <p className="text-xs text-slate-400 mt-1">Topic: {test.topic || 'Coding Sprint'}</p>
+
+                    <div className="mt-4 flex items-center space-x-4 text-xs text-slate-300">
+                      <div>
+                        <span className="text-slate-500 text-[10px] block">QUESTIONS</span>
+                        <span className="font-bold">{test.questions?.length || 0} Coding Tasks</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 text-[10px] block">TOTAL MARKS</span>
+                        <span className="font-bold">{test.total_marks} Marks</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 text-[10px] block">PASS PERCENTAGE</span>
+                        <span className="font-bold">{test.passing_percentage}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+                    {isAlreadyAttempted ? (
+                      <span className="text-xs text-emerald-400 font-semibold flex items-center space-x-1">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Attempt Completed</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">Offline Secured</span>
+                    )}
+
+                    <button
+                      onClick={() => setSelectedTestForLockdown(test)}
+                      className="flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md transition"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>{isAlreadyAttempted ? 'Retake Examination' : 'Start Examination'}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* PAGE 4: RESULT */
+        <div className="flex-1 overflow-y-auto p-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                <Trophy className="w-5 h-5 text-amber-400" />
+                <span>My Examination Results & Scorecards</span>
+              </h2>
+              <p className="text-xs text-slate-400">Cryptographically verified evaluation records with local execution details.</p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-xl">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                <tr>
+                  <th className="p-4">Exam Title</th>
+                  <th className="p-4">Score</th>
+                  <th className="p-4">Percentage</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">Integrity Hash</th>
+                  <th className="p-4">Submitted Date</th>
+                  <th className="p-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {myAttempts.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-slate-500 italic">
+                      No examination records found. Take an examination from the "Test" tab to view your results here.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  myAttempts.map(att => (
+                    <tr key={att.id} className="hover:bg-slate-800/30">
+                      <td className="p-4 font-bold text-white">
+                        {tests.find(t => t.id === att.test_id)?.title || 'Coding Sprint Examination'}
+                      </td>
+                      <td className="p-4 font-bold text-slate-200">{att.total_score} / {att.max_score}</td>
+                      <td className="p-4 font-bold text-emerald-400">{att.percentage}%</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          att.passed ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {att.passed ? 'PASSED' : 'NOT QUALIFIED'}
+                        </span>
+                      </td>
+                      <td className="p-4 font-mono text-[10px] text-slate-500 truncate max-w-[120px]">
+                        {att.integrity_hash || 'SHA-256 Validated'}
+                      </td>
+                      <td className="p-4 text-slate-400">
+                        {att.submitted_at ? new Date(att.submitted_at).toLocaleString() : 'Recent'}
+                      </td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => setSelectedAttemptInspect(att)}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-xs font-semibold border border-slate-700 transition"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
-    </div>
-  )}
+        </div>
+      )}
+
+      {/* Attempt Details Modal */}
+      {selectedAttemptInspect && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 max-w-xl w-full rounded-3xl p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h4 className="text-base font-bold text-white">Examination Scorecard</h4>
+                <p className="text-xs text-slate-400">{studentName} ({studentId})</p>
+              </div>
+              <button
+                onClick={() => setSelectedAttemptInspect(null)}
+                className="text-slate-400 hover:text-white text-xs px-2 py-1 bg-slate-800 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Final Score:</span>
+                <span className="font-bold text-white">{selectedAttemptInspect.total_score} / {selectedAttemptInspect.max_score}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Result Standing:</span>
+                <span className={`font-bold ${selectedAttemptInspect.passed ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {selectedAttemptInspect.passed ? 'QUALIFIED (PASSED)' : 'NOT QUALIFIED'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Integrity Hash:</span>
+                <span className="font-mono text-[10px] text-emerald-400 truncate max-w-xs">{selectedAttemptInspect.integrity_hash}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h5 className="text-xs font-bold text-slate-300 uppercase">Submissions Breakdown</h5>
+              {(selectedAttemptInspect.submissions || []).map((sub: any, idx: number) => (
+                <div key={idx} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white">Question #{idx + 1} ({sub.language})</span>
+                    <span className="text-emerald-400 font-bold">{sub.score} Marks</span>
+                  </div>
+                  <pre className="p-3 bg-slate-900 rounded-lg font-mono text-[11px] text-slate-200 overflow-x-auto max-h-36">
+                    {sub.source_code || '// No code recorded'}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pre-Flight Lockdown Gate Modal */}
       {selectedTestForLockdown && (

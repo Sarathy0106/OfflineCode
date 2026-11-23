@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LoginPage } from './components/LoginPage';
 import { Navbar } from './components/Navbar';
 import { AdminPortal } from './components/AdminPortal';
 import { StudentPortal } from './components/StudentPortal';
@@ -6,13 +7,19 @@ import { OfflineExamRoom } from './components/OfflineExamRoom';
 import { TopHoverBar } from './components/TopHoverBar';
 import { Test } from './types';
 
+interface AuthenticatedUser {
+  role: 'admin' | 'student';
+  name: string;
+  id: string;
+  email?: string;
+}
+
 export const App: React.FC = () => {
-  const [role, setRole] = useState<'admin' | 'student'>('admin');
+  // Authentication State: null means user must log in
+  const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [activeExam, setActiveExam] = useState<Test | null>(null);
-  const [studentName, setStudentName] = useState('Sarathy V');
-  const [studentId, setStudentId] = useState('CS2026-042');
 
   // Network & Fullscreen Monitoring via Electron IPC
   useEffect(() => {
@@ -69,6 +76,17 @@ export const App: React.FC = () => {
     }
   };
 
+  // 1. If not authenticated, show Authentication Login Page
+  if (!currentUser) {
+    return (
+      <LoginPage
+        onLogin={(user) => setCurrentUser(user)}
+        isOnline={isOnline}
+      />
+    );
+  }
+
+  // 2. If authenticated, render appropriate portal
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans relative">
       {/* Sleek Top Hover Bar for Instant Fullscreen Exit / Controls on mouse hover */}
@@ -82,11 +100,15 @@ export const App: React.FC = () => {
       {/* Main Top Navigation Header */}
       {!activeExam && (
         <Navbar
-          role={role}
-          onRoleChange={setRole}
+          role={currentUser.role}
+          userName={currentUser.name}
+          userId={currentUser.id}
           isOnline={isOnline}
-          studentName={studentName}
           isFullscreen={isFullscreen}
+          onSignOut={() => {
+            setActiveExam(null);
+            setCurrentUser(null);
+          }}
           onToggleFullscreen={handleToggleFullscreen}
           onMinimize={handleMinimize}
           onClose={handleClose}
@@ -97,25 +119,24 @@ export const App: React.FC = () => {
       {activeExam ? (
         <OfflineExamRoom
           test={activeExam}
-          studentName={studentName}
-          studentId={studentId}
+          studentName={currentUser.name}
+          studentId={currentUser.id}
           isOnline={isOnline}
           onExamSubmitted={(attempt) => {
             console.log('Exam submitted:', attempt);
             setActiveExam(null);
-            setRole('student');
           }}
           onExitKiosk={() => {
             handleExitFullscreen();
             setActiveExam(null);
           }}
         />
-      ) : role === 'admin' ? (
+      ) : currentUser.role === 'admin' ? (
         <AdminPortal />
       ) : (
         <StudentPortal
-          studentName={studentName}
-          studentId={studentId}
+          studentName={currentUser.name}
+          studentId={currentUser.id}
           isOnline={isOnline}
           onStartExam={(test) => setActiveExam(test)}
         />

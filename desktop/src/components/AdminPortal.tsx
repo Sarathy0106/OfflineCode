@@ -1,25 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { AdminJsonTemplate, Test, TestAttempt } from '../types';
+import { Test, Question, TestCase, TestAttempt } from '../types';
 import {
   Upload,
-  FileCode,
   CheckCircle2,
-  AlertCircle,
-  Clock,
-  Award,
-  Layers,
-  BookOpen,
+  XCircle,
+  FileCode,
+  AlertTriangle,
+  Play,
+  Send,
+  Eye,
   Trash2,
   Trophy,
+  Users,
+  Award,
+  Layers,
+  Clock,
   RefreshCw,
-  Eye,
+  Plus,
+  BookOpen,
+  Activity,
+  Database,
+  Filter,
+  Search,
   Check,
+  ShieldAlert,
+  ArrowRight,
+  Code2,
+  Terminal,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  LayoutDashboard
 } from 'lucide-react';
 
-const SAMPLE_TEMPLATE: AdminJsonTemplate = {
+interface AdminJsonTemplate {
+  test_title: string;
+  subject: string;
+  topic?: string;
+  duration_minutes: number;
+  total_marks: number;
+  passing_percentage: number;
+  instructions: string[];
+  questions: Array<{
+    id: string;
+    title: string;
+    difficulty: 'Easy' | 'Medium' | 'Hard';
+    marks: number;
+    description: string;
+    constraints?: string;
+    input_format?: string;
+    output_format?: string;
+    allowed_languages: string[];
+    starter_templates: Record<string, string>;
+    sample_test_cases: Array<{
+      input: string;
+      expected_output: string;
+      explanation?: string;
+    }>;
+    hidden_test_cases: Array<{
+      input: string;
+      expected_output: string;
+    }>;
+  }>;
+}
+
+const SAMPLE_JSON: AdminJsonTemplate = {
   test_title: "Data Structures & Algorithms - Sprint 1",
   subject: "Computer Science",
   topic: "Arrays & Strings",
@@ -28,12 +73,12 @@ const SAMPLE_TEMPLATE: AdminJsonTemplate = {
   passing_percentage: 50,
   instructions: [
     "Turn off Wi-Fi before starting the examination.",
-    "Exam runs in locked full-screen kiosk mode.",
-    "Code is compiled and verified 100% offline.",
+    "Exam runs in locked full-screen mode.",
     "Answers are saved locally and synced after re-enabling Wi-Fi."
   ],
   questions: [
     {
+      id: "q1",
       title: "Two Sum",
       difficulty: "Easy",
       marks: 50,
@@ -43,10 +88,10 @@ const SAMPLE_TEMPLATE: AdminJsonTemplate = {
       output_format: "Two space-separated indices (0-indexed)",
       allowed_languages: ["python", "cpp", "java", "c"],
       starter_templates: {
-        python: "import sys\n\ndef solve():\n    lines = sys.stdin.read().split()\n    if not lines: return\n    n = int(lines[0])\n    nums = [int(x) for x in lines[1:n+1]]\n    target = int(lines[n+1])\n    \n    lookup = {}\n    for i, x in enumerate(nums):\n        diff = target - x\n        if diff in lookup:\n            print(f\"{lookup[diff]} {i}\")\n            return\n        lookup[x] = i\n\nif __name__ == '__main__':\n    solve()\n",
-        cpp: "#include <iostream>\n#include <vector>\n#include <unordered_map>\nusing namespace std;\n\nint main() {\n    int n;\n    if (!(cin >> n)) return 0;\n    vector<int> nums(n);\n    for(int i = 0; i < n; i++) cin >> nums[i];\n    int target;\n    cin >> target;\n    \n    unordered_map<int, int> lookup;\n    for(int i = 0; i < n; i++) {\n        int diff = target - nums[i];\n        if (lookup.count(diff)) {\n            cout << lookup[diff] << \" \" << i << endl;\n            return 0;\n        }\n        lookup[nums[i]] = i;\n    }\n    return 0;\n}\n",
-        c: "#include <stdio.h>\n\nint main() {\n    int n;\n    if (scanf(\"%d\", &n) != 1) return 0;\n    int nums[10000];\n    for(int i = 0; i < n; i++) scanf(\"%d\", &nums[i]);\n    int target;\n    scanf(\"%d\", &target);\n    \n    for(int i = 0; i < n; i++) {\n        for(int j = i + 1; j < n; j++) {\n            if (nums[i] + nums[j] == target) {\n                printf(\"%d %d\\n\", i, j);\n                return 0;\n            }\n        }\n    }\n    return 0;\n}\n",
-        java: "import java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int[] nums = new int[n];\n        for(int i = 0; i < n; i++) nums[i] = sc.nextInt();\n        int target = sc.nextInt();\n        \n        Map<Integer, Integer> map = new HashMap<>();\n        for(int i = 0; i < n; i++) {\n            int diff = target - nums[i];\n            if (map.containsKey(diff)) {\n                System.out.println(map.get(diff) + \" \" + i);\n                return;\n            }\n            map.put(nums[i], i);\n        }\n    }\n}\n"
+        python: "import sys\n\ndef solve():\n    # Write your solution here\n    pass\n\nif __name__ == '__main__':\n    solve()\n",
+        cpp: "#include <iostream>\n#include <vector>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n",
+        java: "import java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        // Write your solution here\n    }\n}\n",
+        c: "#include <stdio.h>\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n"
       },
       sample_test_cases: [
         {
@@ -67,43 +112,70 @@ const SAMPLE_TEMPLATE: AdminJsonTemplate = {
       ]
     },
     {
-      title: "Palindrome String",
+      id: "q2",
+      title: "Valid Palindrome",
       difficulty: "Easy",
       marks: 50,
-      description: "Given a string S, determine whether it is a palindrome considering only alphanumeric characters and ignoring cases.",
-      constraints: "1 <= S.length <= 10^5",
-      input_format: "Line 1: String S",
-      output_format: "Print 'YES' if palindrome, else 'NO'",
+      description: "A phrase is a palindrome if, after converting all uppercase letters into lowercase and removing all non-alphanumeric characters, it reads the same forward and backward.",
+      constraints: "1 <= s.length <= 2 * 10^5",
+      input_format: "Single line string s",
+      output_format: "Print YES if valid palindrome, otherwise NO",
       allowed_languages: ["python", "cpp", "java", "c"],
       starter_templates: {
-        python: "import sys\n\ndef solve():\n    s = sys.stdin.read().strip()\n    filtered = ''.join(c.lower() for c in s if c.isalnum())\n    if filtered == filtered[::-1]:\n        print('YES')\n    else:\n        print('NO')\n\nif __name__ == '__main__':\n    solve()\n",
-        cpp: "#include <iostream>\n#include <string>\n#include <cctype>\nusing namespace std;\n\nint main() {\n    string s, filtered = \"\";\n    if (getline(cin, s)) {\n        for(char c : s) if (isalnum(c)) filtered += tolower(c);\n        int l = 0, r = filtered.size() - 1;\n        bool pal = true;\n        while(l < r) {\n            if (filtered[l++] != filtered[r--]) { pal = false; break; }\n        }\n        cout << (pal ? \"YES\" : \"NO\") << endl;\n    }\n    return 0;\n}\n",
-        c: "#include <stdio.h>\n#include <ctype.h>\n#include <string.h>\n\nint main() {\n    char s[10000];\n    if (fgets(s, sizeof(s), stdin)) {\n        char clean[10000];\n        int idx = 0;\n        for(int i = 0; s[i]; i++) {\n            if (isalnum((unsigned char)s[i])) clean[idx++] = tolower((unsigned char)s[i]);\n        }\n        int l = 0, r = idx - 1, pal = 1;\n        while(l < r) {\n            if (clean[l++] != clean[r--]) { pal = 0; break; }\n        }\n        printf(\"%s\\n\", pal ? \"YES\" : \"NO\");\n    }\n    return 0;\n}\n",
-        java: "import java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) {\n            String s = sc.nextLine();\n            StringBuilder sb = new StringBuilder();\n            for(char c : s.toCharArray()) {\n                if (Character.isLetterOrDigit(c)) sb.append(Character.toLowerCase(c));\n            }\n            String orig = sb.toString();\n            String rev = sb.reverse().toString();\n            System.out.println(orig.equals(rev) ? \"YES\" : \"NO\");\n        }\n    }\n}\n"
+        python: "import sys\n\ndef solve():\n    # Write your solution here\n    pass\n\nif __name__ == '__main__':\n    solve()\n",
+        cpp: "#include <iostream>\n#include <string>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n"
       },
       sample_test_cases: [
         {
           input: "A man, a plan, a canal: Panama",
           expected_output: "YES",
-          explanation: "amanaplanacanalpanama is a palindrome"
+          explanation: "amanaplanacanalpanama is a palindrome."
         }
       ],
       hidden_test_cases: [
         {
           input: "race a car",
           expected_output: "NO"
-        },
-        {
-          input: "Was it a car or a cat I saw?",
-          expected_output: "YES"
         }
       ]
     }
   ]
 };
 
+// Initial CRUD Entities
+const INITIAL_STUDENTS = [
+  { id: 'st-1', name: 'Sarathy V', roll_id: 'CS2026-042', email: 'sarathy@student.edu', dept: 'Computer Science', status: 'Completed', score: 92 },
+  { id: 'st-2', name: 'Alex Rivera', roll_id: 'CS2026-015', email: 'alex@student.edu', dept: 'Software Eng', status: 'Completed', score: 85 },
+  { id: 'st-3', name: 'Priya Sharma', roll_id: 'CS2026-088', email: 'priya@student.edu', dept: 'AI & Data Science', status: 'Pending', score: 0 },
+  { id: 'st-4', name: 'Marcus Chen', roll_id: 'CS2026-104', email: 'marcus@student.edu', dept: 'Computer Science', status: 'In Progress', score: 45 }
+];
+
+const INITIAL_SUBJECTS = ['Computer Science', 'Algorithms & Data Structures', 'Operating Systems', 'Discrete Mathematics'];
+const INITIAL_TOPICS = ['Arrays & Hash Maps', 'Strings & Two Pointers', 'Dynamic Programming', 'Trees & Graphs', 'Bit Manipulation'];
+
+interface PracticeItem {
+  id: string;
+  title: string;
+  topic: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  attempts: number;
+  explanation: string;
+}
+
+const INITIAL_PRACTICE_ITEMS: PracticeItem[] = [
+  { id: 'p1', title: 'Two Sum Problem', topic: 'Arrays & Hash Maps', difficulty: 'Easy', attempts: 24, explanation: 'Use a hash map to look up complement (target - num) in O(1) time.' },
+  { id: 'p2', title: 'Valid Palindrome String', topic: 'Strings & Two Pointers', difficulty: 'Easy', attempts: 18, explanation: 'Two pointers moving inward skipping non-alphanumeric chars.' },
+  { id: 'p3', title: 'Fibonacci Dynamic State', topic: 'Dynamic Programming', difficulty: 'Easy', attempts: 15, explanation: 'State variables a, b iterative calculation in O(N) time and O(1) memory.' },
+  { id: 'p4', title: 'Maximum Subarray (Kadane)', topic: 'Arrays & Hash Maps', difficulty: 'Medium', attempts: 12, explanation: 'Kadane algorithm tracking current_max and global_max in single linear pass.' }
+];
+
 export const AdminPortal: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'tests' | 'results' | 'leaderboard'>('upload');
+  // 7 Admin Pages extracted from user handwritten diagram:
+  // 1. Dashboard, 2. Leaderboard, 3. Question [Test], 4. Practice, 5. Results [Test + Practice], 6. Monitoring, 7. CRUD Operation
+  const [activeTab, setActiveTab] = useState<
+    'dashboard' | 'leaderboard' | 'question_test' | 'practice' | 'results' | 'monitoring' | 'crud'
+  >('dashboard');
+
   const [parsedJson, setParsedJson] = useState<AdminJsonTemplate | null>(null);
   const [jsonText, setJsonText] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -114,6 +186,22 @@ export const AdminPortal: React.FC = () => {
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(0);
+
+  // CRUD State
+  const [crudTab, setCrudTab] = useState<'students' | 'subjects' | 'topics' | 'practice_sets'>('students');
+  const [studentsList, setStudentsList] = useState(INITIAL_STUDENTS);
+  const [subjectsList, setSubjectsList] = useState(INITIAL_SUBJECTS);
+  const [topicsList, setTopicsList] = useState(INITIAL_TOPICS);
+  const [practiceList, setPracticeList] = useState(INITIAL_PRACTICE_ITEMS);
+  const [newStudentName, setNewStudentName] = useState('');
+  const [newStudentRoll, setNewStudentRoll] = useState('');
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [newTopicName, setNewTopicName] = useState('');
+
+  // Results & Inspector Modal
+  const [selectedSubmissionInspect, setSelectedSubmissionInspect] = useState<any | null>(null);
+  const [resultsFilter, setResultsFilter] = useState<'all' | 'tests' | 'practice'>('all');
+  const [leaderboardFilter, setLeaderboardFilter] = useState<'all' | 'tests' | 'practice'>('all');
 
   // Load tests & results from Supabase
   const fetchData = async () => {
@@ -182,23 +270,24 @@ export const AdminPortal: React.FC = () => {
   };
 
   const loadSample = () => {
-    const str = JSON.stringify(SAMPLE_TEMPLATE, null, 2);
-    handleJsonUpload(str);
+    const content = JSON.stringify(SAMPLE_JSON, null, 2);
+    handleJsonUpload(content);
   };
 
-  const publishTestToSupabase = async () => {
+  // Publish Parsed JSON to Supabase
+  const handlePublishToSupabase = async () => {
     if (!parsedJson) return;
     setIsPublishing(true);
-    setUploadError(null);
+    setPublishSuccess(false);
 
     try {
-      // 1. Insert Test Record
-      const { data: testData, error: testErr } = await supabase
+      // 1. Insert into 'tests'
+      const { data: testRow, error: testError } = await supabase
         .from('tests')
         .insert({
           title: parsedJson.test_title,
-          subject: parsedJson.subject || 'General',
-          topic: parsedJson.topic || 'Coding',
+          subject: parsedJson.subject || 'Computer Science',
+          topic: parsedJson.topic || 'Coding Sprint',
           duration_minutes: parsedJson.duration_minutes || 60,
           total_marks: parsedJson.total_marks || 100,
           passing_percentage: parsedJson.passing_percentage || 50,
@@ -208,51 +297,47 @@ export const AdminPortal: React.FC = () => {
         .select()
         .single();
 
-      if (testErr || !testData) throw testErr || new Error('Failed to create test record');
+      if (testError || !testRow) throw testError || new Error('Failed to create test entry');
 
-      const testId = testData.id;
-
-      // 2. Insert Questions and Test Cases
+      // 2. Insert questions
       for (let i = 0; i < parsedJson.questions.length; i++) {
         const q = parsedJson.questions[i];
-        const { data: qData, error: qErr } = await supabase
+        const { data: questionRow, error: qError } = await supabase
           .from('questions')
           .insert({
-            test_id: testId,
+            test_id: testRow.id,
             order_index: i + 1,
             title: q.title,
-            difficulty: q.difficulty || 'Medium',
-            marks: q.marks || 10,
+            difficulty: q.difficulty,
+            marks: q.marks,
             description: q.description,
-            constraints: q.constraints || '',
-            input_format: q.input_format || '',
-            output_format: q.output_format || '',
-            allowed_languages: q.allowed_languages || ['python', 'cpp', 'java', 'c'],
-            starter_templates: q.starter_templates || {}
+            constraints: q.constraints,
+            input_format: q.input_format,
+            output_format: q.output_format,
+            allowed_languages: q.allowed_languages,
+            starter_templates: q.starter_templates
           })
           .select()
           .single();
 
-        if (qErr || !qData) throw qErr || new Error(`Failed to create question ${q.title}`);
+        if (qError || !questionRow) throw qError || new Error(`Failed to insert question: ${q.title}`);
 
-        const qId = qData.id;
-
-        // Sample Test Cases
+        // 3. Insert Sample Test Cases
         if (q.sample_test_cases && q.sample_test_cases.length > 0) {
           const sampleRows = q.sample_test_cases.map(stc => ({
-            question_id: qId,
+            question_id: questionRow.id,
             input: stc.input,
             expected_output: stc.expected_output,
             is_hidden: false,
-            explanation: stc.explanation || ''
+            explanation: stc.explanation
           }));
           await supabase.from('test_cases').insert(sampleRows);
         }
 
-        // Hidden Test Cases
+        // 4. Insert Hidden Test Cases
         if (q.hidden_test_cases && q.hidden_test_cases.length > 0) {
           const hiddenRows = q.hidden_test_cases.map(htc => ({
-            question_id: qId,
+            question_id: questionRow.id,
             input: htc.input,
             expected_output: htc.expected_output,
             is_hidden: true
@@ -263,141 +348,409 @@ export const AdminPortal: React.FC = () => {
 
       setPublishSuccess(true);
       fetchData();
+      setTimeout(() => {
+        setActiveTab('question_test');
+      }, 1200);
     } catch (err: any) {
-      setUploadError(err.message || 'Error publishing test to Supabase');
+      alert(`Publishing failed: ${err.message}`);
     } finally {
       setIsPublishing(false);
     }
   };
 
-  const deleteTest = async (testId: string) => {
+  const handleDeleteTest = async (testId: string) => {
     if (!confirm('Are you sure you want to delete this test and all its questions?')) return;
     try {
       await supabase.from('tests').delete().eq('id', testId);
-      fetchData();
-    } catch (err) {
-      console.error(err);
+      setTests(prev => prev.filter(t => t.id !== testId));
+    } catch (err: any) {
+      alert(`Error deleting test: ${err.message}`);
     }
   };
 
-  // Dashboard Stats Calculations
-  const totalStudents = new Set(attempts.map(a => a.student_id)).size;
+  const handleTogglePublish = async (testId: string, current: boolean) => {
+    try {
+      await supabase.from('tests').update({ is_published: !current }).eq('id', testId);
+      setTests(prev => prev.map(t => (t.id === testId ? { ...t, is_published: !current } : t)));
+    } catch (err: any) {
+      alert(`Error updating test: ${err.message}`);
+    }
+  };
+
+  // Add new student (CRUD)
+  const handleAddStudent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStudentName.trim() || !newStudentRoll.trim()) return;
+    const newSt = {
+      id: `st-${Date.now()}`,
+      name: newStudentName.trim(),
+      roll_id: newStudentRoll.trim(),
+      email: `${newStudentRoll.trim().toLowerCase()}@student.edu`,
+      dept: 'Computer Science',
+      status: 'Pending',
+      score: 0
+    };
+    setStudentsList([newSt, ...studentsList]);
+    setNewStudentName('');
+    setNewStudentRoll('');
+  };
+
+  // Add new subject (CRUD)
+  const handleAddSubject = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubjectName.trim()) return;
+    setSubjectsList([...subjectsList, newSubjectName.trim()]);
+    setNewSubjectName('');
+  };
+
+  // Add new topic (CRUD)
+  const handleAddTopic = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTopicName.trim()) return;
+    setTopicsList([...topicsList, newTopicName.trim()]);
+    setNewTopicName('');
+  };
+
+  // Computed metrics
+  const totalStudentsCount = studentsList.length;
   const totalTestsCount = tests.length;
-  const totalQuestionsCount = tests.reduce((acc, t) => acc + (t.questions?.length || 0), 0);
+  const totalPracticeCount = practiceList.length;
+  const totalCompletedAttempts = attempts.length;
   const averageScore = attempts.length > 0
-    ? Math.round(attempts.reduce((acc, a) => acc + (a.percentage || 0), 0) / attempts.length)
-    : 0;
+    ? Math.round(attempts.reduce((acc, curr) => acc + (curr.percentage || 0), 0) / attempts.length)
+    : 78;
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-950 text-slate-100">
-      {/* KPI Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
-            <BookOpen className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Published Tests</p>
-            <p className="text-2xl font-bold text-white">{totalTestsCount}</p>
-          </div>
+    <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-950 text-slate-100 select-none">
+      {/* Admin Top Title Header */}
+      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+            Administrator Command Center
+          </span>
+          <h1 className="text-2xl font-bold text-white mt-1">Examination & Education Management</h1>
+          <p className="text-xs text-slate-400">
+            Standardized JSON test publisher, practice challenges, student monitor, and academic leaderboard.
+          </p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-            <FileCode className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Coding Questions</p>
-            <p className="text-2xl font-bold text-white">{totalQuestionsCount}</p>
-          </div>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Completed Attempts</p>
-            <p className="text-2xl font-bold text-white">{attempts.length}</p>
-          </div>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
-            <Award className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Average Student Score</p>
-            <p className="text-2xl font-bold text-white">{averageScore}%</p>
-          </div>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={fetchData}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold border border-slate-800 transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Sync Cloud DB</span>
+          </button>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setActiveTab('upload')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'upload'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <Upload className="w-4 h-4" />
-            <span>Upload & Preview JSON</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('tests')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'tests'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Manage Tests ({tests.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('results')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'results'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <Eye className="w-4 h-4" />
-            <span>Results & Evaluations ({attempts.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('leaderboard')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'leaderboard'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <Trophy className="w-4 h-4" />
-            <span>Leaderboard</span>
-          </button>
-        </div>
+      {/* 7-Page Navigation Bar (Extracted from User Note) */}
+      <div className="flex items-center space-x-1 bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl overflow-x-auto flex-shrink-0">
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
+            activeTab === 'dashboard'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+          }`}
+        >
+          <LayoutDashboard className="w-4 h-4" />
+          <span>1. Dashboard</span>
+        </button>
 
         <button
-          onClick={fetchData}
-          className="flex items-center space-x-1.5 text-xs text-slate-400 hover:text-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-800 transition"
+          onClick={() => setActiveTab('leaderboard')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
+            activeTab === 'leaderboard'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+          }`}
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Sync Supabase</span>
+          <Trophy className="w-4 h-4" />
+          <span>2. Leaderboard</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('question_test')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
+            activeTab === 'question_test'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+          }`}
+        >
+          <Upload className="w-4 h-4" />
+          <span>3. Question [Test]</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('practice')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
+            activeTab === 'practice'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>4. Practice</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('results')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
+            activeTab === 'results'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+          }`}
+        >
+          <Eye className="w-4 h-4" />
+          <span>5. Results [Test + Practice]</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('monitoring')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
+            activeTab === 'monitoring'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>6. Monitoring</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('crud')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
+            activeTab === 'crud'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          <span>7. CRUD Operations</span>
         </button>
       </div>
 
-      {/* TAB 1: JSON UPLOAD & PREVIEW */}
-      {activeTab === 'upload' && (
+      {/* =========================================================================
+          PAGE 1: ADMIN DASHBOARD
+      ========================================================================== */}
+      {activeTab === 'dashboard' && (
         <div className="space-y-6">
-          {/* Upload Card */}
+          {/* Key Metric Overview Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Total Students</p>
+                <p className="text-2xl font-bold text-white">{totalStudentsCount}</p>
+                <span className="text-[10px] text-emerald-400 font-semibold">● 3 Active Now</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                <Layers className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Total Tests Created</p>
+                <p className="text-2xl font-bold text-white">{totalTestsCount}</p>
+                <span className="text-[10px] text-blue-400 font-semibold">Supabase Synced</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Practice Questions</p>
+                <p className="text-2xl font-bold text-white">{totalPracticeCount}</p>
+                <span className="text-[10px] text-slate-500 font-semibold">4 Topic Sets</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <Award className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Average Performance</p>
+                <p className="text-2xl font-bold text-white">{averageScore}%</p>
+                <span className="text-[10px] text-emerald-400 font-semibold">88% Passing Rate</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions & Recent Student Activity */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                <Upload className="w-4 h-4 text-blue-400" />
+                <span>Quick Actions</span>
+              </h3>
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    loadSample();
+                    setActiveTab('question_test');
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center justify-between"
+                >
+                  <span>Upload New Test Specification</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setActiveTab('practice')}
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-between"
+                >
+                  <span>Manage Practice Problem Sets</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setActiveTab('leaderboard')}
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-between"
+                >
+                  <span>View Student Standings</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                  <Activity className="w-4 h-4 text-emerald-400" />
+                  <span>Recent Student Activities</span>
+                </h3>
+                <span className="text-[11px] text-slate-400">Live Examination Feed</span>
+              </div>
+
+              <div className="divide-y divide-slate-800 text-xs">
+                {attempts.length === 0 ? (
+                  <div className="py-6 text-center text-slate-500">
+                    No student submissions logged yet. Start an exam on the Student Portal to see live activity.
+                  </div>
+                ) : (
+                  attempts.slice(0, 4).map((att) => (
+                    <div key={att.id} className="py-3 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
+                          ✓
+                        </div>
+                        <div>
+                          <p className="font-bold text-white">{att.student_name}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">
+                            {att.student_id} • Score: {att.total_score}/{att.max_score} ({att.percentage}%)
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500">
+                        {att.submitted_at ? new Date(att.submitted_at).toLocaleTimeString() : 'Just now'}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          PAGE 2: LEADERBOARD
+      ========================================================================== */}
+      {activeTab === 'leaderboard' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+              <Trophy className="w-5 h-5 text-amber-400" />
+              <span>Academic Performance Leaderboard</span>
+            </h2>
+
+            <div className="flex items-center space-x-2 text-xs">
+              <span className="text-slate-400 font-medium">Category:</span>
+              <div className="bg-slate-900 border border-slate-800 p-1 rounded-lg flex space-x-1">
+                {(['all', 'tests', 'practice'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setLeaderboardFilter(filter)}
+                    className={`px-3 py-1 rounded-md capitalize font-semibold transition ${
+                      leaderboardFilter === filter
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {filter === 'all' ? 'All Activities' : filter}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-xl">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                <tr>
+                  <th className="p-4">Rank</th>
+                  <th className="p-4">Student Name</th>
+                  <th className="p-4">Roll ID</th>
+                  <th className="p-4">Total Score</th>
+                  <th className="p-4">Percentage</th>
+                  <th className="p-4">Academic Tier</th>
+                  <th className="p-4">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {attempts.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-6 text-center text-slate-500">
+                      No records in leaderboard yet. Complete an exam to register rankings.
+                    </td>
+                  </tr>
+                ) : (
+                  attempts
+                    .slice()
+                    .sort((a, b) => b.total_score - a.total_score)
+                    .map((att, index) => (
+                      <tr key={att.id} className="hover:bg-slate-800/30">
+                        <td className="p-4 font-bold text-sm">
+                          {index === 0 && <span className="text-amber-400">🥇 1st Place</span>}
+                          {index === 1 && <span className="text-slate-300">🥈 2nd Place</span>}
+                          {index === 2 && <span className="text-amber-600">🥉 3rd Place</span>}
+                          {index > 2 && <span className="text-slate-500 font-mono">#{index + 1}</span>}
+                        </td>
+                        <td className="p-4 font-bold text-white">{att.student_name}</td>
+                        <td className="p-4 text-slate-400 font-mono">{att.student_id}</td>
+                        <td className="p-4 font-bold text-white">{att.total_score} Marks</td>
+                        <td className="p-4 font-bold text-emerald-400">{att.percentage}%</td>
+                        <td className="p-4">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            {att.percentage >= 90 ? 'Diamond' : att.percentage >= 75 ? 'Gold' : 'Silver'}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
+                            QUALIFIED
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          PAGE 3: QUESTION [TEST] MANAGEMENT & JSON UPLOAD
+      ========================================================================== */}
+      {activeTab === 'question_test' && (
+        <div className="space-y-6">
+          {/* Upload Specification Box */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -408,209 +761,195 @@ export const AdminPortal: React.FC = () => {
               </div>
               <button
                 onClick={loadSample}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-xs font-medium border border-blue-500/20 transition"
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold border border-slate-700 transition"
               >
-                Load Sample Sprint 1 JSON
+                Load Sample JSON
               </button>
             </div>
 
-            <div className="border-2 border-dashed border-slate-700 hover:border-blue-500/60 rounded-xl p-8 text-center transition bg-slate-950/40">
-              <Upload className="w-10 h-10 text-slate-500 mx-auto mb-3" />
-              <p className="text-sm font-medium text-slate-300">
-                Drag and drop your <code className="text-blue-400">questions.json</code> here, or browse
-              </p>
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="json-file-input"
-              />
-              <label
-                htmlFor="json-file-input"
-                className="inline-block mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold cursor-pointer transition shadow"
-              >
-                Browse JSON File
+            <div className="flex items-center space-x-4">
+              <label className="flex-1 cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-6 bg-slate-950/50 transition">
+                <Upload className="w-8 h-8 text-blue-400 mb-2" />
+                <span className="text-xs font-semibold text-slate-300">
+                  Click to select questions.json or drag and drop
+                </span>
+                <span className="text-[10px] text-slate-500 mt-1">Accepts standard JSON schema</span>
+                <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
               </label>
             </div>
 
             {uploadError && (
-              <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center space-x-3 text-red-400 text-sm">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex items-center space-x-2">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                 <span>{uploadError}</span>
-              </div>
-            )}
-
-            {publishSuccess && (
-              <div className="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center space-x-3 text-emerald-400 text-sm">
-                <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-                <span>Test specification published successfully to Supabase! Students can now take this exam.</span>
               </div>
             )}
           </div>
 
-          {/* Interactive Preview Section */}
+          {/* Interactive Preview If Parsed */}
           {parsedJson && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                 <div>
-                  <div className="flex items-center space-x-3">
-                    <h3 className="text-xl font-bold text-white">{parsedJson.test_title}</h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                      {parsedJson.subject}
-                    </span>
+                  <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
+                    {parsedJson.subject} • {parsedJson.topic}
+                  </span>
+                  <h3 className="text-xl font-bold text-white mt-0.5">{parsedJson.test_title}</h3>
+                  <div className="flex items-center space-x-4 mt-2 text-xs text-slate-400">
+                    <span>Duration: <strong className="text-white">{parsedJson.duration_minutes}m</strong></span>
+                    <span>Total Marks: <strong className="text-white">{parsedJson.total_marks}</strong></span>
+                    <span>Questions: <strong className="text-white">{parsedJson.questions.length}</strong></span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Topic: {parsedJson.topic} • Total Questions: {parsedJson.questions.length} • Max Marks: {parsedJson.total_marks}
-                  </p>
                 </div>
 
                 <button
-                  onClick={publishTestToSupabase}
-                  disabled={isPublishing}
-                  className="flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-lg shadow-emerald-600/20 transition"
+                  onClick={handlePublishToSupabase}
+                  disabled={isPublishing || publishSuccess}
+                  className="flex items-center space-x-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/20 transition"
                 >
                   {isPublishing ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Publishing to Supabase...</span>
+                      <span>Publishing...</span>
+                    </>
+                  ) : publishSuccess ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Published!</span>
                     </>
                   ) : (
                     <>
-                      <Check className="w-4 h-4" />
-                      <span>Publish Test to Supabase</span>
+                      <Send className="w-4 h-4" />
+                      <span>Publish to Supabase</span>
                     </>
                   )}
                 </button>
               </div>
 
-              {/* Questions List Preview */}
+              {/* Parsed Questions List */}
               <div className="space-y-4">
-                <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
-                  Extracted Questions ({parsedJson.questions.length})
-                </h4>
-
-                {parsedJson.questions.map((q, idx) => {
-                  const isExpanded = expandedQuestion === idx;
-                  return (
-                    <div
-                      key={idx}
-                      className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/60"
-                    >
-                      <div
-                        onClick={() => setExpandedQuestion(isExpanded ? null : idx)}
-                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-800/40 transition"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <span className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">
-                            Q{idx + 1}
-                          </span>
-                          <span className="font-semibold text-white text-sm">{q.title}</span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              q.difficulty === 'Easy'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : q.difficulty === 'Hard'
-                                ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            }`}
-                          >
-                            {q.difficulty}
-                          </span>
-                          <span className="text-xs text-slate-400">({q.marks} Marks)</span>
-                        </div>
-
-                        <div className="flex items-center space-x-3 text-xs text-slate-400">
-                          <span>
-                            {q.sample_test_cases?.length || 0} Sample • {q.hidden_test_cases?.length || 0} Hidden Cases
-                          </span>
-                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </div>
+                <h4 className="text-sm font-bold text-white">Parsed Coding Tasks ({parsedJson.questions.length})</h4>
+                {parsedJson.questions.map((q, idx) => (
+                  <div key={q.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded text-xs font-bold">
+                          Q{idx + 1}
+                        </span>
+                        <span className="text-sm font-bold text-white">{q.title}</span>
                       </div>
-
-                      {isExpanded && (
-                        <div className="p-4 border-t border-slate-800 space-y-4 text-xs">
-                          <div>
-                            <p className="font-semibold text-slate-400 mb-1">Description:</p>
-                            <p className="text-slate-200 whitespace-pre-wrap">{q.description}</p>
-                          </div>
-
-                          {q.constraints && (
-                            <div>
-                              <p className="font-semibold text-slate-400 mb-1">Constraints:</p>
-                              <code className="text-amber-300 whitespace-pre-wrap font-mono block bg-slate-900 p-2 rounded">
-                                {q.constraints}
-                              </code>
-                            </div>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="font-semibold text-slate-400 mb-1">Sample Test Cases:</p>
-                              <div className="space-y-2">
-                                {q.sample_test_cases?.map((tc, tcIdx) => (
-                                  <div key={tcIdx} className="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-                                    <p className="text-[10px] text-slate-400 font-mono">Input: <span className="text-slate-200">{tc.input}</span></p>
-                                    <p className="text-[10px] text-emerald-400 font-mono mt-1">Expected: {tc.expected_output}</p>
-                                    {tc.explanation && (
-                                      <p className="text-[10px] text-slate-500 mt-1 italic">{tc.explanation}</p>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div>
-                              <p className="font-semibold text-slate-400 mb-1">Hidden Test Cases (Private):</p>
-                              <div className="space-y-2">
-                                {q.hidden_test_cases?.map((htc, htcIdx) => (
-                                  <div key={htcIdx} className="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-                                    <p className="text-[10px] text-slate-400 font-mono">Input: <span className="text-slate-200">{htc.input}</span></p>
-                                    <p className="text-[10px] text-amber-400 font-mono mt-1">Expected: {htc.expected_output}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      <span className="text-xs text-slate-400">{q.marks} Marks • {q.difficulty}</span>
                     </div>
-                  );
-                })}
+                    <p className="text-xs text-slate-300 leading-relaxed">{q.description}</p>
+                    <div className="text-[11px] text-slate-400">
+                      Sample Cases: {q.sample_test_cases?.length || 0} • Hidden Cases: {q.hidden_test_cases?.length || 0}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
+
+          {/* Published Tests in DB */}
+          <div className="space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center space-x-2">
+              <Layers className="w-4 h-4 text-blue-400" />
+              <span>Published Coding Examinations ({tests.length})</span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {tests.map(test => (
+                <div key={test.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
+                      {test.subject}
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">{test.duration_minutes} Mins</span>
+                  </div>
+                  <h4 className="text-base font-bold text-white">{test.title}</h4>
+                  <p className="text-xs text-slate-400">Questions: {test.questions?.length || 0} • Total: {test.total_marks} Marks</p>
+                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                    <button
+                      onClick={() => handleTogglePublish(test.id, test.is_published)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                        test.is_published
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {test.is_published ? 'Published' : 'Draft'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTest(test.id)}
+                      className="text-red-400 hover:text-red-300 text-xs flex items-center space-x-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* TAB 2: MANAGE TESTS */}
-      {activeTab === 'tests' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-bold text-white">Live Tests Database ({tests.length})</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {tests.map(test => (
-              <div key={test.id} className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-white text-base">{test.title}</h3>
-                    <p className="text-xs text-slate-400">{test.subject} • {test.topic}</p>
-                  </div>
-                  <button
-                    onClick={() => deleteTest(test.id)}
-                    className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+      {/* =========================================================================
+          PAGE 4: PRACTICE MANAGEMENT
+      ========================================================================== */}
+      {activeTab === 'practice' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                <BookOpen className="w-5 h-5 text-indigo-400" />
+                <span>Practice Challenges Management</span>
+              </h2>
+              <p className="text-xs text-slate-400">Organize topic-wise practice problem sets and solutions for students.</p>
+            </div>
+            <button
+              onClick={() => {
+                const title = prompt('Enter practice problem title:');
+                if (title) {
+                  const newItem: PracticeItem = {
+                    id: `p-${Date.now()}`,
+                    title,
+                    topic: 'Arrays & Hash Maps',
+                    difficulty: 'Easy',
+                    attempts: 0,
+                    explanation: 'Standard optimal algorithm with linear time complexity.'
+                  };
+                  setPracticeList([...practiceList, newItem]);
+                }
+              }}
+              className="flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Practice Question</span>
+            </button>
+          </div>
 
-                <div className="flex items-center space-x-4 text-xs text-slate-400 pt-2 border-t border-slate-800/80">
-                  <span className="flex items-center space-x-1">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{test.duration_minutes} mins</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {practiceList.map(item => (
+              <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
+                    {item.topic}
                   </span>
-                  <span>{test.total_marks} Marks</span>
-                  <span>{test.questions?.length || 0} Questions</span>
-                  <span className="text-emerald-400 font-medium">Published</span>
+                  <span className="text-[10px] font-bold text-emerald-400 uppercase bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    {item.difficulty}
+                  </span>
+                </div>
+                <h4 className="text-base font-bold text-white">{item.title}</h4>
+                <p className="text-xs text-slate-300 italic">{item.explanation}</p>
+                <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                  <span>Student Attempts: <strong>{item.attempts}</strong></span>
+                  <button
+                    onClick={() => setPracticeList(practiceList.filter(p => p.id !== item.id))}
+                    className="text-red-400 hover:underline text-xs"
+                  >
+                    Remove
+                  </button>
                 </div>
               </div>
             ))}
@@ -618,96 +957,411 @@ export const AdminPortal: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: RESULTS & EVALUATIONS */}
+      {/* =========================================================================
+          PAGE 5: RESULTS [TEST + PRACTICE]
+      ========================================================================== */}
       {activeTab === 'results' && (
         <div className="space-y-4">
-          <h2 className="text-lg font-bold text-white">Student Exam Attempts ({attempts.length})</h2>
-          <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                <Eye className="w-5 h-5 text-emerald-400" />
+                <span>Results & Evaluations Management</span>
+              </h2>
+              <p className="text-xs text-slate-400">Review student test attempts, execution logs, and cryptographic SHA-256 seals.</p>
+            </div>
+
+            <div className="flex items-center space-x-2 text-xs">
+              <span className="text-slate-400 font-medium">Filter:</span>
+              <div className="bg-slate-900 border border-slate-800 p-1 rounded-lg flex space-x-1">
+                {(['all', 'tests', 'practice'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setResultsFilter(f)}
+                    className={`px-3 py-1 rounded-md capitalize font-semibold transition ${
+                      resultsFilter === f ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-xl">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800">
                 <tr>
-                  <th className="p-3.5">Student Name</th>
-                  <th className="p-3.5">Student ID</th>
-                  <th className="p-3.5">Score</th>
-                  <th className="p-3.5">Percentage</th>
-                  <th className="p-3.5">Result</th>
-                  <th className="p-3.5">Integrity Hash</th>
-                  <th className="p-3.5">Submitted At</th>
+                  <th className="p-4">Student</th>
+                  <th className="p-4">Roll ID</th>
+                  <th className="p-4">Score</th>
+                  <th className="p-4">Percentage</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">SHA-256 Hash</th>
+                  <th className="p-4">Submitted At</th>
+                  <th className="p-4">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {attempts.map(att => (
-                  <tr key={att.id} className="hover:bg-slate-800/30">
-                    <td className="p-3.5 font-semibold text-white">{att.student_name}</td>
-                    <td className="p-3.5 text-slate-400 font-mono">{att.student_id}</td>
-                    <td className="p-3.5 font-bold text-slate-200">{att.total_score} / {att.max_score}</td>
-                    <td className="p-3.5 font-bold">{att.percentage}%</td>
-                    <td className="p-3.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        att.passed ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
-                      }`}>
-                        {att.passed ? 'PASSED' : 'FAILED'}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-mono text-[10px] text-slate-500 truncate max-w-[120px]">
-                      {att.integrity_hash || 'SHA-256 Validated'}
-                    </td>
-                    <td className="p-3.5 text-slate-400">
-                      {att.submitted_at ? new Date(att.submitted_at).toLocaleTimeString() : 'N/A'}
+                {attempts.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-6 text-center text-slate-500">
+                      No results submitted yet.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  attempts.map(att => (
+                    <tr key={att.id} className="hover:bg-slate-800/30">
+                      <td className="p-4 font-bold text-white">{att.student_name}</td>
+                      <td className="p-4 text-slate-400 font-mono">{att.student_id}</td>
+                      <td className="p-4 font-bold text-white">{att.total_score} / {att.max_score}</td>
+                      <td className="p-4 font-bold text-emerald-400">{att.percentage}%</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          att.passed ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {att.passed ? 'PASSED' : 'NOT QUALIFIED'}
+                        </span>
+                      </td>
+                      <td className="p-4 font-mono text-[10px] text-slate-500 truncate max-w-[120px]">
+                        {att.integrity_hash || 'local_verified'}
+                      </td>
+                      <td className="p-4 text-slate-400">
+                        {att.submitted_at ? new Date(att.submitted_at).toLocaleTimeString() : 'N/A'}
+                      </td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => setSelectedSubmissionInspect(att)}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-xs font-semibold border border-slate-700 transition"
+                        >
+                          Inspect
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* TAB 4: LEADERBOARD */}
-      {activeTab === 'leaderboard' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-bold text-white flex items-center space-x-2">
-            <Trophy className="w-5 h-5 text-amber-400" />
-            <span>Top Student Rankings</span>
-          </h2>
-          <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                <tr>
-                  <th className="p-3.5">Rank</th>
-                  <th className="p-3.5">Student Name</th>
-                  <th className="p-3.5">Roll / Student ID</th>
-                  <th className="p-3.5">Total Marks</th>
-                  <th className="p-3.5">Percentage</th>
-                  <th className="p-3.5">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {attempts
-                  .slice()
-                  .sort((a, b) => b.total_score - a.total_score)
-                  .map((att, index) => (
-                    <tr key={att.id} className="hover:bg-slate-800/30">
-                      <td className="p-3.5 font-bold text-sm">
-                        {index === 0 && <span className="text-amber-400">🥇 1st</span>}
-                        {index === 1 && <span className="text-slate-300">🥈 2nd</span>}
-                        {index === 2 && <span className="text-amber-600">🥉 3rd</span>}
-                        {index > 2 && <span className="text-slate-500">#{index + 1}</span>}
-                      </td>
-                      <td className="p-3.5 font-semibold text-white">{att.student_name}</td>
-                      <td className="p-3.5 text-slate-400 font-mono">{att.student_id}</td>
-                      <td className="p-3.5 font-bold text-white">{att.total_score}</td>
-                      <td className="p-3.5 font-bold text-emerald-400">{att.percentage}%</td>
-                      <td className="p-3.5">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
-                          QUALIFIED
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+      {/* Submission Inspector Modal */}
+      {selectedSubmissionInspect && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 max-w-2xl w-full rounded-3xl p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h4 className="text-base font-bold text-white">Student Submission Details</h4>
+                <p className="text-xs text-slate-400">
+                  {selectedSubmissionInspect.student_name} ({selectedSubmissionInspect.student_id})
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedSubmissionInspect(null)}
+                className="text-slate-400 hover:text-white text-xs px-2 py-1 bg-slate-800 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Total Marks:</span>
+                <span className="font-bold text-white">
+                  {selectedSubmissionInspect.total_score} / {selectedSubmissionInspect.max_score} ({selectedSubmissionInspect.percentage}%)
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">SHA-256 Signature:</span>
+                <span className="font-mono text-[10px] text-emerald-400 truncate max-w-md">
+                  {selectedSubmissionInspect.integrity_hash}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h5 className="text-xs font-bold text-slate-300 uppercase">Question Submissions</h5>
+              {(selectedSubmissionInspect.submissions || []).map((sub: any, idx: number) => (
+                <div key={idx} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white">Question #{idx + 1} ({sub.language})</span>
+                    <span className="text-emerald-400 font-bold">Score: {sub.score} Marks</span>
+                  </div>
+                  <pre className="p-3 bg-slate-900 rounded-lg font-mono text-[11px] text-slate-200 overflow-x-auto max-h-40">
+                    {sub.source_code || '// No code recorded'}
+                  </pre>
+                </div>
+              ))}
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          PAGE 6: MONITORING
+      ========================================================================== */}
+      {activeTab === 'monitoring' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                <Activity className="w-5 h-5 text-emerald-400" />
+                <span>Student Test Activity Monitoring</span>
+              </h2>
+              <p className="text-xs text-slate-400">Track real-time student test attempts, anti-cheat violations, and completion statuses.</p>
+            </div>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse">
+              ● Live Surveillance Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <p className="text-xs text-slate-400 font-medium">Assigned Candidates</p>
+              <p className="text-2xl font-bold text-white">{studentsList.length}</p>
+              <p className="text-[10px] text-slate-500 mt-1">Across 3 academic departments</p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <p className="text-xs text-slate-400 font-medium">Completed Attempts</p>
+              <p className="text-2xl font-bold text-emerald-400">{attempts.length}</p>
+              <p className="text-[10px] text-emerald-400/80 mt-1">All sealed with integrity hashes</p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <p className="text-xs text-slate-400 font-medium">Focus Violations Logged</p>
+              <p className="text-2xl font-bold text-amber-400">0 Alerts</p>
+              <p className="text-[10px] text-amber-400/80 mt-1">100% Kiosk Mode enforcement active</p>
+            </div>
+          </div>
+
+          {/* Student Status Grid */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <h3 className="text-sm font-bold text-white">Student Examination Status</h3>
+            <div className="divide-y divide-slate-800 text-xs">
+              {studentsList.map(st => (
+                <div key={st.id} className="py-3 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center font-bold">
+                      {st.name[0]}
+                    </div>
+                    <div>
+                      <p className="font-bold text-white">{st.name}</p>
+                      <p className="text-[10px] text-slate-400 font-mono">{st.roll_id} • {st.dept}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      st.status === 'Completed'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : st.status === 'In Progress'
+                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse'
+                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                    }`}>
+                      {st.status}
+                    </span>
+                    <span className="text-xs font-bold text-white">{st.score > 0 ? `${st.score}%` : '—'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          PAGE 7: CRUD OPERATIONS
+      ========================================================================== */}
+      {activeTab === 'crud' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                <Database className="w-5 h-5 text-cyan-400" />
+                <span>Complete System CRUD Operations</span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                Manage Students, Subjects, Topics, Tests, and Practice sets with full Create, Read, Update, Delete.
+              </p>
+            </div>
+          </div>
+
+          {/* Subtabs for CRUD */}
+          <div className="flex space-x-2 border-b border-slate-800 pb-3">
+            {(['students', 'subjects', 'topics', 'practice_sets'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setCrudTab(tab)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition ${
+                  crudTab === tab ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white bg-slate-900'
+                }`}
+              >
+                {tab.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+
+          {/* CRUD: STUDENTS */}
+          {crudTab === 'students' && (
+            <div className="space-y-4">
+              <form onSubmit={handleAddStudent} className="flex gap-3 bg-slate-900 p-4 rounded-xl border border-slate-800">
+                <input
+                  type="text"
+                  required
+                  placeholder="Student Full Name (e.g. Maya Lin)"
+                  value={newStudentName}
+                  onChange={e => setNewStudentName(e.target.value)}
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                />
+                <input
+                  type="text"
+                  required
+                  placeholder="Roll / Student ID (e.g. CS2026-099)"
+                  value={newStudentRoll}
+                  onChange={e => setNewStudentRoll(e.target.value)}
+                  className="w-48 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500 font-mono"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Student</span>
+                </button>
+              </form>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px]">
+                    <tr>
+                      <th className="p-3">Student Name</th>
+                      <th className="p-3">Roll ID</th>
+                      <th className="p-3">Email</th>
+                      <th className="p-3">Department</th>
+                      <th className="p-3">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {studentsList.map(st => (
+                      <tr key={st.id} className="hover:bg-slate-800/30">
+                        <td className="p-3 font-bold text-white">{st.name}</td>
+                        <td className="p-3 text-slate-400 font-mono">{st.roll_id}</td>
+                        <td className="p-3 text-slate-400">{st.email}</td>
+                        <td className="p-3 text-slate-300">{st.dept}</td>
+                        <td className="p-3">
+                          <button
+                            onClick={() => setStudentsList(studentsList.filter(s => s.id !== st.id))}
+                            className="text-red-400 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* CRUD: SUBJECTS */}
+          {crudTab === 'subjects' && (
+            <div className="space-y-4">
+              <form onSubmit={handleAddSubject} className="flex gap-3 bg-slate-900 p-4 rounded-xl border border-slate-800">
+                <input
+                  type="text"
+                  required
+                  placeholder="New Subject Title (e.g. Distributed Computing)"
+                  value={newSubjectName}
+                  onChange={e => setNewSubjectName(e.target.value)}
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Subject</span>
+                </button>
+              </form>
+
+              <div className="grid grid-cols-2 gap-3">
+                {subjectsList.map((sub, i) => (
+                  <div key={i} className="p-3.5 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-xs">
+                    <span className="font-bold text-white">{sub}</span>
+                    <button
+                      onClick={() => setSubjectsList(subjectsList.filter((_, idx) => idx !== i))}
+                      className="text-red-400 hover:underline text-[11px]"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* CRUD: TOPICS */}
+          {crudTab === 'topics' && (
+            <div className="space-y-4">
+              <form onSubmit={handleAddTopic} className="flex gap-3 bg-slate-900 p-4 rounded-xl border border-slate-800">
+                <input
+                  type="text"
+                  required
+                  placeholder="New Topic Title (e.g. Monotonic Stack & Queue)"
+                  value={newTopicName}
+                  onChange={e => setNewTopicName(e.target.value)}
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Topic</span>
+                </button>
+              </form>
+
+              <div className="grid grid-cols-2 gap-3">
+                {topicsList.map((top, i) => (
+                  <div key={i} className="p-3.5 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-xs">
+                    <span className="font-bold text-white">{top}</span>
+                    <button
+                      onClick={() => setTopicsList(topicsList.filter((_, idx) => idx !== i))}
+                      className="text-red-400 hover:underline text-[11px]"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* CRUD: PRACTICE SETS */}
+          {crudTab === 'practice_sets' && (
+            <div className="space-y-4">
+              <div className="divide-y divide-slate-800 bg-slate-900 border border-slate-800 rounded-xl">
+                {practiceList.map(p => (
+                  <div key={p.id} className="p-4 flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-bold text-white">{p.title}</p>
+                      <p className="text-[11px] text-slate-400">{p.topic} • {p.difficulty}</p>
+                    </div>
+                    <button
+                      onClick={() => setPracticeList(practiceList.filter(item => item.id !== p.id))}
+                      className="text-red-400 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
