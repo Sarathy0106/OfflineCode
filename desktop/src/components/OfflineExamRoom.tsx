@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Editor from '@monaco-editor/react';
+import { OfflineCodeEditor } from './OfflineCodeEditor';
 import { supabase } from '../lib/supabase';
 import { Test, Question, StudentSubmission } from '../types';
 import {
@@ -610,30 +610,12 @@ export const OfflineExamRoom: React.FC<OfflineExamRoomProps> = ({
             </button>
           </div>
 
-          {/* Monaco Editor Canvas */}
+          {/* Code Editor Canvas (100% Offline with zero CDN dependencies) */}
           <div className="flex-1 relative">
-            <Editor
-              height="100%"
-              theme="vs-dark"
-              language={
-                answers[currentQuestion?.id || '']?.language === 'cpp'
-                  ? 'cpp'
-                  : answers[currentQuestion?.id || '']?.language === 'c'
-                  ? 'c'
-                  : answers[currentQuestion?.id || '']?.language === 'java'
-                  ? 'java'
-                  : 'python'
-              }
+            <OfflineCodeEditor
               value={answers[currentQuestion?.id || '']?.code || ''}
               onChange={handleCodeChange}
-              options={{
-                fontSize: 14,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                automaticLayout: true,
-                tabSize: 4
-              }}
+              language={answers[currentQuestion?.id || '']?.language || 'python'}
             />
           </div>
 
