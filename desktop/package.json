@@ -5,12 +5,13 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && tsc -p tsconfig.electron.json",
+    "build:ui": "tsc && vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "electron:start": "electron .",
-    "dist": "npm run build && npm run build:electron && electron-builder",
-    "dist:mac": "npm run build && npm run build:electron && electron-builder --mac",
-    "dist:win": "npm run build && npm run build:electron && electron-builder --win"
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
