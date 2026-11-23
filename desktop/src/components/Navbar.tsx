@@ -1,18 +1,26 @@
 import React from 'react';
-import { Shield, Wifi, WifiOff, User, BookOpen, Layers } from 'lucide-react';
+import { Shield, Wifi, WifiOff, User, BookOpen, Layers, Maximize2, Minimize2, Minus, X } from 'lucide-react';
 
 interface NavbarProps {
   role: 'admin' | 'student';
   onRoleChange: (newRole: 'admin' | 'student') => void;
   isOnline: boolean;
   studentName?: string;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  onMinimize?: () => void;
+  onClose?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   role,
   onRoleChange,
   isOnline,
-  studentName = 'Student'
+  studentName = 'Student',
+  isFullscreen = false,
+  onToggleFullscreen,
+  onMinimize,
+  onClose
 }) => {
   return (
     <header className="h-16 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-6 flex items-center justify-between z-20">
@@ -92,6 +100,43 @@ export const Navbar: React.FC<NavbarProps> = ({
               {role === 'admin' ? 'Exam Controller' : 'ID: 2026-CS-042'}
             </p>
           </div>
+        </div>
+
+        {/* Desktop Window Controls & Fullscreen Action */}
+        <div className="flex items-center space-x-1 pl-2 border-l border-slate-800">
+          {onToggleFullscreen && (
+            <button
+              onClick={onToggleFullscreen}
+              className={`p-1.5 rounded-lg border transition ${
+                isFullscreen
+                  ? 'bg-blue-600/20 text-blue-400 border-blue-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800 border-slate-800'
+              }`}
+              title={isFullscreen ? 'Exit Full Screen (Esc)' : 'Enter Full Screen'}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          )}
+
+          {onMinimize && (
+            <button
+              onClick={onMinimize}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg border border-slate-800 transition"
+              title="Minimize Window"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+          )}
+
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg border border-slate-800 transition"
+              title="Close Application"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </header>

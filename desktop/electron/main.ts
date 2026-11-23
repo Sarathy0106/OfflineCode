@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut, Menu } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -10,6 +10,99 @@ let mainWindow: BrowserWindow | null = null;
 let isExamLocked = false;
 let networkCheckInterval: NodeJS.Timeout | null = null;
 
+function createApplicationMenu() {
+  const isMac = process.platform === 'darwin';
+
+  const template: any[] = [
+    ...(isMac
+      ? [
+          {
+            label: 'Offline Exam Kiosk',
+            submenu: [
+              { role: 'about' },
+              { type: 'separator' },
+              { role: 'services' },
+              { type: 'separator' },
+              { role: 'hide' },
+              { role: 'hideOthers' },
+              { role: 'unhide' },
+              { type: 'separator' },
+              { role: 'quit' }
+            ]
+          }
+        ]
+      : []),
+    {
+      label: 'File',
+      submenu: [
+        isMac ? { role: 'close' } : { role: 'quit' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        {
+          label: 'Toggle Full Screen',
+          accelerator: isMac ? 'Ctrl+Command+F' : 'F11',
+          click: () => {
+            if (mainWindow) {
+              const isFull = mainWindow.isFullScreen();
+              mainWindow.setFullScreen(!isFull);
+            }
+          }
+        },
+        {
+          label: 'Exit Full Screen',
+          accelerator: 'Escape',
+          click: () => {
+            if (mainWindow && mainWindow.isFullScreen()) {
+              mainWindow.setFullScreen(false);
+              mainWindow.setKiosk(false);
+            }
+          }
+        }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        ...(isMac
+          ? [
+              { type: 'separator' },
+              { role: 'front' },
+              { type: 'separator' },
+              { role: 'window' }
+            ]
+          : [{ role: 'close' }])
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -18,12 +111,22 @@ function createWindow() {
     minHeight: 700,
     backgroundColor: '#020617',
     title: 'Offline Exam & Education Platform',
+    fullscreenable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false
     }
+  });
+
+  // Track Fullscreen transitions and inform the renderer
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow?.webContents.send('window:fullscreen-change', true);
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow?.webContents.send('window:fullscreen-change', false);
   });
 
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -213,28 +316,52 @@ async function executeOffline(language: string, code: string, input: string = ''
 
 // IPC Handlers Setup
 function setupIpc() {
+  // Window controls & Fullscreen
+  ipcMain.handle('window:toggle-fullscreen', () => {
+    if (!mainWindow) return false;
+    const isFull = mainWindow.isFullScreen();
+    mainWindow.setFullScreen(!isFull);
+    return !isFull;
+  });
+
+  ipcMain.handle('window:exit-fullscreen', () => {
+    if (!mainWindow) return false;
+    mainWindow.setFullScreen(false);
+    mainWindow.setKiosk(false);
+    mainWindow.setAlwaysOnTop(false);
+    isExamLocked = false;
+    return false;
+  });
+
+  ipcMain.handle('window:is-fullscreen', () => {
+    return mainWindow?.isFullScreen() || false;
+  });
+
+  ipcMain.handle('window:minimize', () => {
+    mainWindow?.minimize();
+    return true;
+  });
+
+  ipcMain.handle('window:close', () => {
+    mainWindow?.close();
+    return true;
+  });
+
   // Kiosk & Anti-Cheat
   ipcMain.handle('kiosk:enter', () => {
     if (!mainWindow) return false;
     isExamLocked = true;
-    mainWindow.setKiosk(true);
+    // Standard macOS native fullscreen allows the top options bar to show on hover!
     mainWindow.setFullScreen(true);
-    mainWindow.setAlwaysOnTop(true, 'screen-saver');
-
-    // Intercept emergency exits & window switching
-    globalShortcut.register('CommandOrControl+Q', () => {});
-    globalShortcut.register('Alt+F4', () => {});
-    globalShortcut.register('CommandOrControl+W', () => {});
     return true;
   });
 
   ipcMain.handle('kiosk:exit', () => {
     if (!mainWindow) return false;
     isExamLocked = false;
-    mainWindow.setKiosk(false);
     mainWindow.setFullScreen(false);
+    mainWindow.setKiosk(false);
     mainWindow.setAlwaysOnTop(false);
-    globalShortcut.unregisterAll();
     return true;
   });
 
@@ -319,6 +446,7 @@ function setupIpc() {
 }
 
 app.whenReady().then(() => {
+  createApplicationMenu();
   setupIpc();
   createWindow();
   startNetworkMonitoring();

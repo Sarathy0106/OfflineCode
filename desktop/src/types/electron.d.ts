@@ -1,4 +1,11 @@
 export interface IElectronAPI {
+  toggleFullscreen: () => Promise<boolean>;
+  exitFullscreen: () => Promise<boolean>;
+  isFullscreen: () => Promise<boolean>;
+  minimizeWindow: () => Promise<boolean>;
+  closeWindow: () => Promise<boolean>;
+  onFullscreenChange: (callback: (isFull: boolean) => void) => () => void;
+
   enterKiosk: () => Promise<boolean>;
   exitKiosk: () => Promise<boolean>;
   isKiosk: () => Promise<boolean>;

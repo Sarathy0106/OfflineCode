@@ -3,23 +3,34 @@ import { Navbar } from './components/Navbar';
 import { AdminPortal } from './components/AdminPortal';
 import { StudentPortal } from './components/StudentPortal';
 import { OfflineExamRoom } from './components/OfflineExamRoom';
+import { TopHoverBar } from './components/TopHoverBar';
 import { Test } from './types';
 
 export const App: React.FC = () => {
   const [role, setRole] = useState<'admin' | 'student'>('admin');
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [activeExam, setActiveExam] = useState<Test | null>(null);
   const [studentName, setStudentName] = useState('Sarathy V');
   const [studentId, setStudentId] = useState('CS2026-042');
 
-  // Network Monitoring via Electron IPC or Navigator
+  // Network & Fullscreen Monitoring via Electron IPC
   useEffect(() => {
     if (window.electronAPI) {
       window.electronAPI.checkNetwork().then(setIsOnline);
-      const cleanup = window.electronAPI.onNetworkChange((online) => {
+      const cleanupNetwork = window.electronAPI.onNetworkChange((online) => {
         setIsOnline(online);
       });
-      return cleanup;
+
+      window.electronAPI.isFullscreen().then(setIsFullscreen);
+      const cleanupFullscreen = window.electronAPI.onFullscreenChange((full) => {
+        setIsFullscreen(full);
+      });
+
+      return () => {
+        cleanupNetwork();
+        cleanupFullscreen();
+      };
     } else {
       const handleOnline = () => setIsOnline(true);
       const handleOffline = () => setIsOnline(false);
@@ -32,15 +43,53 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  const handleToggleFullscreen = async () => {
+    if (window.electronAPI) {
+      const newState = await window.electronAPI.toggleFullscreen();
+      setIsFullscreen(newState);
+    }
+  };
+
+  const handleExitFullscreen = async () => {
+    if (window.electronAPI) {
+      await window.electronAPI.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  const handleMinimize = async () => {
+    if (window.electronAPI) {
+      await window.electronAPI.minimizeWindow();
+    }
+  };
+
+  const handleClose = async () => {
+    if (window.electronAPI) {
+      await window.electronAPI.closeWindow();
+    }
+  };
+
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans">
-      {/* If in an active exam room, hide the navbar for zero distractions & strict kiosk */}
+    <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans relative">
+      {/* Sleek Top Hover Bar for Instant Fullscreen Exit / Controls on mouse hover */}
+      <TopHoverBar
+        isFullscreen={isFullscreen}
+        onExitFullscreen={handleExitFullscreen}
+        onMinimize={handleMinimize}
+        onClose={handleClose}
+      />
+
+      {/* Main Top Navigation Header */}
       {!activeExam && (
         <Navbar
           role={role}
           onRoleChange={setRole}
           isOnline={isOnline}
           studentName={studentName}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={handleToggleFullscreen}
+          onMinimize={handleMinimize}
+          onClose={handleClose}
         />
       )}
 
@@ -56,7 +105,10 @@ export const App: React.FC = () => {
             setActiveExam(null);
             setRole('student');
           }}
-          onExitKiosk={() => setActiveExam(null)}
+          onExitKiosk={() => {
+            handleExitFullscreen();
+            setActiveExam(null);
+          }}
         />
       ) : role === 'admin' ? (
         <AdminPortal />

@@ -1,6 +1,18 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Window Controls & Fullscreen
+  toggleFullscreen: () => ipcRenderer.invoke('window:toggle-fullscreen'),
+  exitFullscreen: () => ipcRenderer.invoke('window:exit-fullscreen'),
+  isFullscreen: () => ipcRenderer.invoke('window:is-fullscreen'),
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  onFullscreenChange: (callback: (isFull: boolean) => void) => {
+    const listener = (_: any, isFull: boolean) => callback(isFull);
+    ipcRenderer.on('window:fullscreen-change', listener);
+    return () => ipcRenderer.removeListener('window:fullscreen-change', listener);
+  },
+
   // Kiosk & Window
   enterKiosk: () => ipcRenderer.invoke('kiosk:enter'),
   exitKiosk: () => ipcRenderer.invoke('kiosk:exit'),

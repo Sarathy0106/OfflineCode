@@ -12,6 +12,7 @@ import {
   Wifi,
   WifiOff,
   Maximize2,
+  Minimize2,
   FileCode,
   ShieldAlert,
   ArrowRight
@@ -414,6 +415,22 @@ export const OfflineExamRoom: React.FC<OfflineExamRoomProps> = ({
             <Clock className="w-4 h-4" />
             <span>{formatTime(timeLeftSeconds)}</span>
           </div>
+
+          <button
+            onClick={() => {
+              if (confirm('Exit full screen and return to dashboard? Your draft is safely saved locally.')) {
+                if (window.electronAPI) {
+                  window.electronAPI.exitFullscreen();
+                }
+                onExitKiosk();
+              }
+            }}
+            className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold border border-slate-700 transition"
+            title="Exit Full Screen"
+          >
+            <Minimize2 className="w-3.5 h-3.5" />
+            <span>Exit Fullscreen</span>
+          </button>
 
           <button
             onClick={() => {
