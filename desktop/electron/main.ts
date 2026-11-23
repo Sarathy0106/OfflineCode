@@ -395,8 +395,10 @@ function setupIpc() {
         id: tc.id || `tc_${i + 1}`,
         is_hidden: !!tc.is_hidden,
         passed,
+        input: tc.is_hidden ? '[Hidden]' : (tc.input || ''),
         actual_output: tc.is_hidden ? (passed ? '[Hidden Passed]' : '[Hidden Failed]') : actualClean,
         expected_output: tc.is_hidden ? '[Hidden]' : expectedClean,
+        stdout: res.stdout,
         stderr: res.stderr,
         timeMs: res.timeMs,
         exitCode: res.exitCode

@@ -49,7 +49,21 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
-      if (testList) setTests(testList);
+      if (testList) {
+        const normalized = testList.map((test: any) => ({
+          ...test,
+          questions: (test.questions || []).map((q: any) => ({
+            ...q,
+            sample_test_cases: (q.sample_test_cases && q.sample_test_cases.length > 0)
+              ? q.sample_test_cases
+              : (q.test_cases || []).filter((tc: any) => !tc.is_hidden),
+            hidden_test_cases: (q.hidden_test_cases && q.hidden_test_cases.length > 0)
+              ? q.hidden_test_cases
+              : (q.test_cases || []).filter((tc: any) => tc.is_hidden)
+          }))
+        }));
+        setTests(normalized);
+      }
 
       const { data: attemptList } = await supabase
         .from('test_attempts')
