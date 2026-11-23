@@ -1,0 +1,49 @@
+{
+  "test_title": "Data Structures & Algorithms - Sprint 1",
+  "subject": "Computer Science",
+  "topic": "Arrays & Strings",
+  "duration_minutes": 60,
+  "total_marks": 100,
+  "passing_percentage": 50,
+  "instructions": [
+    "Turn off Wi-Fi before starting the examination.",
+    "Exam runs in locked full-screen mode.",
+    "Answers are saved locally and synced after re-enabling Wi-Fi."
+  ],
+  "questions": [
+    {
+      "id": "q1",
+      "title": "Two Sum",
+      "difficulty": "Easy",
+      "marks": 50,
+      "description": "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.",
+      "constraints": "2 <= nums.length <= 10^4\n-10^9 <= nums[i] <= 10^9\nOnly one valid answer exists.",
+      "input_format": "Line 1: N (array length)\nLine 2: N space-separated integers\nLine 3: target integer",
+      "output_format": "Two space-separated indices (0-indexed)",
+      "allowed_languages": ["python", "cpp", "java", "c"],
+      "starter_templates": {
+        "python": "import sys\n\ndef solve():\n    # Write your solution here\n    pass\n\nif __name__ == '__main__':\n    solve()\n",
+        "cpp": "#include <iostream>\n#include <vector>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n",
+        "java": "import java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        // Write your solution here\n    }\n}\n",
+        "c": "#include <stdio.h>\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n"
+      },
+      "sample_test_cases": [
+        {
+          "input": "4\n2 7 11 15\n9",
+          "expected_output": "0 1",
+          "explanation": "nums[0] + nums[1] = 2 + 7 = 9"
+        }
+      ],
+      "hidden_test_cases": [
+        {
+          "input": "3\n3 2 4\n6",
+          "expected_output": "1 2"
+        },
+        {
+          "input": "2\n3 3\n6",
+          "expected_output": "0 1"
+        }
+      ]
+    }
+  ]
+}

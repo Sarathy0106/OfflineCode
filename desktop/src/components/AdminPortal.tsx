@@ -190,6 +190,8 @@ export const AdminPortal: React.FC = () => {
   // CRUD State
   const [crudTab, setCrudTab] = useState<'students' | 'subjects' | 'topics' | 'practice_sets'>('students');
   const [studentsList, setStudentsList] = useState(INITIAL_STUDENTS);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [studentSectionFilter, setStudentSectionFilter] = useState('All');
   const [subjectsList, setSubjectsList] = useState(INITIAL_SUBJECTS);
   const [topicsList, setTopicsList] = useState(INITIAL_TOPICS);
   const [practiceList, setPracticeList] = useState(INITIAL_PRACTICE_ITEMS);
@@ -232,6 +234,25 @@ export const AdminPortal: React.FC = () => {
         .select('*, submissions:student_submissions(*)')
         .order('submitted_at', { ascending: false });
       if (attemptList) setAttempts(attemptList as TestAttempt[]);
+
+      // Fetch 280 Students from Supabase
+      const { data: studentList } = await supabase
+        .from('students')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (studentList && studentList.length > 0) {
+        setStudentsList(studentList.map((st: any) => ({
+          id: st.id,
+          name: st.name,
+          roll_id: st.register_number || st.enrollment_number || 'N/A',
+          email: st.college_email || st.personal_email || `${st.register_number?.toLowerCase()}@smvec.ac.in`,
+          dept: `${st.department || 'AI&DS'} (Sec ${st.section || 'A'})`,
+          section: st.section || 'A',
+          status: 'Active',
+          score: 0
+        })));
+      }
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
@@ -377,22 +398,48 @@ export const AdminPortal: React.FC = () => {
     }
   };
 
-  // Add new student (CRUD)
-  const handleAddStudent = (e: React.FormEvent) => {
+  // Add new student (CRUD + Supabase)
+  const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStudentName.trim() || !newStudentRoll.trim()) return;
-    const newSt = {
-      id: `st-${Date.now()}`,
-      name: newStudentName.trim(),
-      roll_id: newStudentRoll.trim(),
-      email: `${newStudentRoll.trim().toLowerCase()}@student.edu`,
-      dept: 'Computer Science',
-      status: 'Pending',
-      score: 0
-    };
-    setStudentsList([newSt, ...studentsList]);
-    setNewStudentName('');
-    setNewStudentRoll('');
+    try {
+      const reg = newStudentRoll.trim().toUpperCase();
+      const { data } = await supabase.from('students').insert({
+        name: newStudentName.trim(),
+        register_number: reg,
+        enrollment_number: reg,
+        section: 'A',
+        department: 'AI&DS',
+        batch: '2025-2029',
+        college_email: `${reg.toLowerCase()}@smvec.ac.in`,
+        status: 'Active'
+      }).select().single();
+
+      const newSt = {
+        id: data?.id || `st-${Date.now()}`,
+        name: newStudentName.trim(),
+        roll_id: reg,
+        email: `${reg.toLowerCase()}@smvec.ac.in`,
+        dept: 'AI&DS (Sec A)',
+        section: 'A',
+        status: 'Active',
+        score: 0
+      };
+      setStudentsList([newSt, ...studentsList]);
+      setNewStudentName('');
+      setNewStudentRoll('');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteStudent = async (id: string) => {
+    try {
+      await supabase.from('students').delete().eq('id', id);
+      setStudentsList(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Add new subject (CRUD)
@@ -1219,7 +1266,7 @@ export const AdminPortal: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="Roll / Student ID (e.g. CS2026-099)"
+                  placeholder="Roll / Student ID (e.g. 25UAI999)"
                   value={newStudentRoll}
                   onChange={e => setNewStudentRoll(e.target.value)}
                   className="w-48 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500 font-mono"
@@ -1233,34 +1280,84 @@ export const AdminPortal: React.FC = () => {
                 </button>
               </form>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+              {/* Filters & Search for Students */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                <div className="flex items-center space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                  {['All', 'A', 'B', 'C', 'D', 'E'].map(sec => (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() => setStudentSectionFilter(sec)}
+                      className={`px-3 py-1 rounded text-xs font-bold transition ${
+                        studentSectionFilter === sec
+                          ? 'bg-blue-600 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {sec === 'All' ? 'All Sections' : `Sec ${sec}`}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="Search name, roll, email..."
+                      value={studentSearch}
+                      onChange={e => setStudentSearch(e.target.value)}
+                      className="bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white outline-none focus:border-blue-500 w-56"
+                    />
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    Total: {studentsList.filter(st => {
+                      const matchesSection = studentSectionFilter === 'All' || (st as any).section === studentSectionFilter || st.dept.includes(`Sec ${studentSectionFilter}`);
+                      const q = studentSearch.toLowerCase();
+                      return matchesSection && (!q || st.name.toLowerCase().includes(q) || st.roll_id.toLowerCase().includes(q) || st.email.toLowerCase().includes(q));
+                    }).length} / {studentsList.length}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden max-h-[500px] overflow-y-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px]">
+                  <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px] sticky top-0 z-10">
                     <tr>
                       <th className="p-3">Student Name</th>
                       <th className="p-3">Roll ID</th>
                       <th className="p-3">Email</th>
-                      <th className="p-3">Department</th>
+                      <th className="p-3">Department & Section</th>
                       <th className="p-3">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {studentsList.map(st => (
-                      <tr key={st.id} className="hover:bg-slate-800/30">
-                        <td className="p-3 font-bold text-white">{st.name}</td>
-                        <td className="p-3 text-slate-400 font-mono">{st.roll_id}</td>
-                        <td className="p-3 text-slate-400">{st.email}</td>
-                        <td className="p-3 text-slate-300">{st.dept}</td>
-                        <td className="p-3">
-                          <button
-                            onClick={() => setStudentsList(studentsList.filter(s => s.id !== st.id))}
-                            className="text-red-400 hover:underline"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {studentsList
+                      .filter(st => {
+                        const matchesSection = studentSectionFilter === 'All' || (st as any).section === studentSectionFilter || st.dept.includes(`Sec ${studentSectionFilter}`);
+                        const q = studentSearch.toLowerCase();
+                        return matchesSection && (!q || st.name.toLowerCase().includes(q) || st.roll_id.toLowerCase().includes(q) || st.email.toLowerCase().includes(q));
+                      })
+                      .map(st => (
+                        <tr key={st.id} className="hover:bg-slate-800/30">
+                          <td className="p-3 font-bold text-white">{st.name}</td>
+                          <td className="p-3 text-slate-400 font-mono">{st.roll_id}</td>
+                          <td className="p-3 text-slate-400">{st.email}</td>
+                          <td className="p-3 text-slate-300">
+                            <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-mono">
+                              {st.dept}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <button
+                              onClick={() => handleDeleteStudent(st.id)}
+                              className="text-red-400 hover:text-red-300 hover:underline font-medium"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
