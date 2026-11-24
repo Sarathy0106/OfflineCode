@@ -166,12 +166,25 @@ const INITIAL_PRACTICE_ITEMS: PracticeItem[] = [
   { id: 'p4', title: 'Maximum Subarray (Kadane)', topic: 'Arrays & Hash Maps', difficulty: 'Medium', attempts: 12, explanation: 'Kadane algorithm tracking current_max and global_max in single linear pass.' }
 ];
 
-export const AdminPortal: React.FC = () => {
+export type AdminTab = 'dashboard' | 'leaderboard' | 'question_test' | 'practice' | 'results' | 'monitoring' | 'crud';
+
+interface AdminPortalProps {
+  activeTab?: AdminTab;
+  onTabChange?: (tab: AdminTab) => void;
+}
+
+export const AdminPortal: React.FC<AdminPortalProps> = ({
+  activeTab: propActiveTab,
+  onTabChange
+}) => {
   // 7 Admin Pages extracted from user handwritten diagram:
   // 1. Dashboard, 2. Leaderboard, 3. Question [Test], 4. Practice, 5. Results [Test + Practice], 6. Monitoring, 7. CRUD Operation
-  const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'leaderboard' | 'question_test' | 'practice' | 'results' | 'monitoring' | 'crud'
-  >('dashboard');
+  const [internalTab, setInternalTab] = useState<AdminTab>('dashboard');
+  const activeTab = propActiveTab || internalTab;
+  const setActiveTab = (tab: AdminTab) => {
+    setInternalTab(tab);
+    if (onTabChange) onTabChange(tab);
+  };
 
   const [parsedJson, setParsedJson] = useState<AdminJsonTemplate | null>(null);
   const [jsonText, setJsonText] = useState('');
@@ -465,15 +478,15 @@ export const AdminPortal: React.FC = () => {
     : 78;
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-950 text-slate-100 select-none">
+    <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-[#F4F8FD] text-[#1C2333] select-none font-sans">
       {/* Admin Top Title Header */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div className="flex items-center justify-between border-b border-[#E2EAF5] pb-4">
         <div>
-          <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+          <span className="text-xs font-bold text-[#2B3B82] uppercase tracking-wider">
             Administrator Command Center
           </span>
-          <h1 className="text-2xl font-bold text-white mt-1">Examination & Education Management</h1>
-          <p className="text-xs text-slate-400">
+          <h1 className="text-2xl font-black text-[#1A2451] mt-1">Examination & Education Management</h1>
+          <p className="text-xs text-slate-500">
             Standardized JSON test publisher, practice challenges, student monitor, and academic leaderboard.
           </p>
         </div>
@@ -481,7 +494,7 @@ export const AdminPortal: React.FC = () => {
         <div className="flex items-center space-x-3">
           <button
             onClick={fetchData}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold border border-slate-800 transition"
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-[#EEF3FA] text-[#2B3B82] rounded-xl text-xs font-semibold border border-[#D0DCED] transition shadow-sm"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Sync Cloud DB</span>
@@ -490,13 +503,13 @@ export const AdminPortal: React.FC = () => {
       </div>
 
       {/* 7-Page Navigation Bar (Extracted from User Note) */}
-      <div className="flex items-center space-x-1 bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl overflow-x-auto flex-shrink-0">
+      <div className="flex items-center space-x-1 bg-white border border-[#E2EAF5] p-1.5 rounded-2xl overflow-x-auto flex-shrink-0 shadow-sm">
         <button
           onClick={() => setActiveTab('dashboard')}
           className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
             activeTab === 'dashboard'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
           }`}
         >
           <LayoutDashboard className="w-4 h-4" />
@@ -507,8 +520,8 @@ export const AdminPortal: React.FC = () => {
           onClick={() => setActiveTab('leaderboard')}
           className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
             activeTab === 'leaderboard'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
           }`}
         >
           <Trophy className="w-4 h-4" />
@@ -519,8 +532,8 @@ export const AdminPortal: React.FC = () => {
           onClick={() => setActiveTab('question_test')}
           className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
             activeTab === 'question_test'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
           }`}
         >
           <Upload className="w-4 h-4" />
@@ -531,8 +544,8 @@ export const AdminPortal: React.FC = () => {
           onClick={() => setActiveTab('practice')}
           className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
             activeTab === 'practice'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
           }`}
         >
           <BookOpen className="w-4 h-4" />
@@ -543,8 +556,8 @@ export const AdminPortal: React.FC = () => {
           onClick={() => setActiveTab('results')}
           className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
             activeTab === 'results'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
           }`}
         >
           <Eye className="w-4 h-4" />
@@ -555,8 +568,8 @@ export const AdminPortal: React.FC = () => {
           onClick={() => setActiveTab('monitoring')}
           className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
             activeTab === 'monitoring'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
           }`}
         >
           <Activity className="w-4 h-4" />
@@ -567,8 +580,8 @@ export const AdminPortal: React.FC = () => {
           onClick={() => setActiveTab('crud')}
           className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
             activeTab === 'crud'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
           }`}
         >
           <Database className="w-4 h-4" />
