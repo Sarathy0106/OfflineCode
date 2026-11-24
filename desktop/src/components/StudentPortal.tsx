@@ -139,65 +139,6 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
 
   return (
     <div className="flex-1 flex flex-col bg-[#F4F8FD] text-[#1C2333] overflow-hidden select-none font-sans">
-      {/* Student Portal Navigation Bar (4 Pages: Dashboard, Test, Practice, Result) */}
-      <div className="h-12 bg-white border-b border-[#E2EAF5] px-6 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              activeTab === 'dashboard'
-                ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
-            }`}
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" />
-            <span>1. Dashboard</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('test')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              activeTab === 'test'
-                ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>2. Test ({tests.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('practice')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              activeTab === 'practice'
-                ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
-            }`}
-          >
-            <Code2 className="w-3.5 h-3.5" />
-            <span>3. Practice Arena</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('result')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              activeTab === 'result'
-                ? 'bg-[#2B3B82] text-white shadow-sm border-b-2 border-[#F5A623]'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-[#EEF3FA]'
-            }`}
-          >
-            <Trophy className="w-3.5 h-3.5" />
-            <span>4. Result ({myAttempts.length})</span>
-          </button>
-        </div>
-
-        <div className="flex items-center space-x-3 text-xs text-slate-500">
-          <span className="font-mono bg-[#EEF3FA] px-2.5 py-1 rounded-lg border border-[#D0DCED] text-[#1A2451] font-semibold">
-            {studentName} ({studentId})
-          </span>
-        </div>
-      </div>
-
       {/* Render Selected View */}
       {activeTab === 'practice' ? (
         /* PAGE 3: PRACTICE ARENA & PLAYGROUND */
