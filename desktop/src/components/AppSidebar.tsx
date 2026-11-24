@@ -20,21 +20,21 @@ interface AppSidebarProps {
   onSignOut: () => void;
 }
 
-export const STUDENT_NAV_ITEMS: Array<{ key: StudentNavKey; icon: string; label: string }> = [
-  { key: 'dashboard', icon: '🏠', label: 'Dashboard' },
-  { key: 'test', icon: '📝', label: 'Test' },
-  { key: 'practice', icon: '💻', label: 'Practice' },
-  { key: 'result', icon: '📊', label: 'Test Results' }
+export const STUDENT_NAV_ITEMS: Array<{ key: StudentNavKey; label: string }> = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'test', label: 'Test' },
+  { key: 'practice', label: 'Practice' },
+  { key: 'result', label: 'Test Results' }
 ];
 
-export const ADMIN_NAV_ITEMS: Array<{ key: AdminNavKey; icon: string; label: string }> = [
-  { key: 'dashboard', icon: '📊', label: 'Dashboard' },
-  { key: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
-  { key: 'question_test', icon: '📤', label: 'Test Question Upload' },
-  { key: 'practice', icon: '📥', label: 'Practice Question Upload' },
-  { key: 'results', icon: '📝', label: 'Test Results' },
-  { key: 'monitoring', icon: '🛰️', label: 'Monitoring' },
-  { key: 'crud', icon: '🗂️', label: 'Manage (CRUD)' }
+export const ADMIN_NAV_ITEMS: Array<{ key: AdminNavKey; label: string }> = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'leaderboard', label: 'Leaderboard' },
+  { key: 'question_test', label: 'Test Question Upload' },
+  { key: 'practice', label: 'Practice Question Upload' },
+  { key: 'results', label: 'Test Results' },
+  { key: 'monitoring', label: 'Monitoring' },
+  { key: 'crud', label: 'Manage (CRUD)' }
 ];
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
@@ -82,14 +82,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             <button
               key={item.key}
               onClick={() => onSelectTab(item.key)}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all text-left group ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
                 isActive
                   ? 'bg-[#2B3B82] text-white shadow-md shadow-[#2B3B82]/40 border-l-4 border-[#F5A623]'
                   : 'text-[#C9D1E3] hover:bg-[#1E2B63] hover:text-white'
               }`}
             >
-              <span className="text-base flex-shrink-0 w-5 text-center">{item.icon}</span>
-              <span className="flex-1 truncate">{item.label}</span>
+              <span className="truncate">{item.label}</span>
               {isActive && (
                 <div className="w-1.5 h-1.5 rounded-full bg-[#F5A623] flex-shrink-0" />
               )}
