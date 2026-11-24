@@ -33,6 +33,8 @@ interface StudentPortalProps {
   onStartExam: (test: Test) => void;
   activeTab?: 'dashboard' | 'test' | 'practice' | 'result';
   onTabChange?: (tab: 'dashboard' | 'test' | 'practice' | 'result') => void;
+  syncTrigger?: number;
+  onSyncStateChange?: (syncing: boolean) => void;
 }
 
 export const StudentPortal: React.FC<StudentPortalProps> = ({
@@ -41,7 +43,9 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
   isOnline,
   onStartExam,
   activeTab: propActiveTab,
-  onTabChange
+  onTabChange,
+  syncTrigger,
+  onSyncStateChange
 }) => {
   // 4 Student Pages extracted from user handwritten diagram:
   // 1. Dashboard, 2. Test, 3. Practice, 4. Result
@@ -61,6 +65,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
   // Fetch tests & student's past attempts
   const fetchStudentData = async () => {
     setIsLoading(true);
+    if (onSyncStateChange) onSyncStateChange(true);
     try {
       const { data: testList } = await supabase
         .from('tests')
@@ -95,12 +100,19 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
       console.error(err);
     } finally {
       setIsLoading(false);
+      if (onSyncStateChange) onSyncStateChange(false);
     }
   };
 
   useEffect(() => {
     fetchStudentData();
   }, [studentId]);
+
+  useEffect(() => {
+    if (syncTrigger && syncTrigger > 0) {
+      fetchStudentData();
+    }
+  }, [syncTrigger]);
 
   // Request Kiosk Fullscreen
   const handleEnableKiosk = async () => {
@@ -183,13 +195,6 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
           <span className="font-mono bg-[#EEF3FA] px-2.5 py-1 rounded-lg border border-[#D0DCED] text-[#1A2451] font-semibold">
             {studentName} ({studentId})
           </span>
-          <button
-            onClick={fetchStudentData}
-            className="flex items-center space-x-1.5 px-3 py-1 bg-white hover:bg-[#EEF3FA] text-[#2B3B82] rounded-lg text-xs font-medium border border-[#D0DCED] transition shadow-sm"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Sync</span>
-          </button>
         </div>
       </div>
 

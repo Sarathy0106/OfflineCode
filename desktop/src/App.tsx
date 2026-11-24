@@ -78,6 +78,10 @@ export const App: React.FC = () => {
   const [studentTab, setStudentTab] = useState<StudentNavKey>('dashboard');
   const [adminTab, setAdminTab] = useState<AdminTab>('dashboard');
 
+  // Cloud Database Sync State
+  const [syncTrigger, setSyncTrigger] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
+
   // Network & Fullscreen Monitoring via Electron IPC
   useEffect(() => {
     if (window.electronAPI) {
@@ -210,11 +214,11 @@ export const App: React.FC = () => {
 
       {/* Main Right Area: TopBar + Page Content */}
       <div className="flex-1 flex flex-col h-full min-w-0 bg-[#F4F8FD]">
-        {/* Top Header Bar */}
+        {/* Top Header Bar: Only Sync and Network Status (No page title/name) */}
         <AppTopBar
-          title={currentTitleMeta.title}
-          subtitle={currentTitleMeta.subtitle}
           isOnline={isOnline}
+          onSync={() => setSyncTrigger((t) => t + 1)}
+          isSyncing={isSyncing}
         />
 
         {/* Dynamic Portal Body */}
@@ -223,6 +227,8 @@ export const App: React.FC = () => {
             <AdminPortal
               activeTab={adminTab}
               onTabChange={setAdminTab}
+              syncTrigger={syncTrigger}
+              onSyncStateChange={setIsSyncing}
             />
           ) : (
             <StudentPortal
@@ -232,6 +238,8 @@ export const App: React.FC = () => {
               onStartExam={(test) => setActiveExam(test)}
               activeTab={studentTab}
               onTabChange={setStudentTab}
+              syncTrigger={syncTrigger}
+              onSyncStateChange={setIsSyncing}
             />
           )}
         </div>

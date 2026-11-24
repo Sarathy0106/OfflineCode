@@ -171,11 +171,15 @@ export type AdminTab = 'dashboard' | 'leaderboard' | 'question_test' | 'practice
 interface AdminPortalProps {
   activeTab?: AdminTab;
   onTabChange?: (tab: AdminTab) => void;
+  syncTrigger?: number;
+  onSyncStateChange?: (syncing: boolean) => void;
 }
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({
   activeTab: propActiveTab,
-  onTabChange
+  onTabChange,
+  syncTrigger,
+  onSyncStateChange
 }) => {
   // 7 Admin Pages extracted from user handwritten diagram:
   // 1. Dashboard, 2. Leaderboard, 3. Question [Test], 4. Practice, 5. Results [Test + Practice], 6. Monitoring, 7. CRUD Operation
@@ -218,6 +222,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   // Load tests & results from Supabase
   const fetchData = async () => {
     setIsLoading(true);
+    if (onSyncStateChange) onSyncStateChange(true);
     try {
       const { data: testList } = await supabase
         .from('tests')
@@ -267,12 +272,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       console.error('Error fetching admin data:', err);
     } finally {
       setIsLoading(false);
+      if (onSyncStateChange) onSyncStateChange(false);
     }
   };
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (syncTrigger && syncTrigger > 0) {
+      fetchData();
+    }
+  }, [syncTrigger]);
 
   const handleJsonUpload = (content: string) => {
     setUploadError(null);
