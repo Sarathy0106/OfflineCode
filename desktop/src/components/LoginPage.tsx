@@ -36,15 +36,19 @@ interface StudentRecord {
 }
 
 interface LoginPageProps {
-  onLogin: (user: {
-    role: 'admin' | 'student';
-    name: string;
-    id: string;
-    email?: string;
-    section?: string;
-    dept?: string;
-  }) => void;
+  onLogin: (
+    user: {
+      role: 'admin' | 'student';
+      name: string;
+      id: string;
+      email?: string;
+      section?: string;
+      dept?: string;
+    },
+    rememberMe?: boolean
+  ) => void;
   isOnline: boolean;
+  sessionExpired?: boolean;
 }
 
 // Authorized Admin Credentials (Strictly 2 accounts allowed)
@@ -65,10 +69,10 @@ const AUTHORIZED_ADMINS = [
   }
 ];
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline, sessionExpired = false }) => {
   const [selectedRole, setSelectedRole] = useState<'student' | 'admin'>('student');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   // Student Auth State (NO LISTING: College Email + Enrollment Number as Password)
   const [studentEmail, setStudentEmail] = useState('');
@@ -130,7 +134,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
           email: matchedStudent.college_email || `${matchedStudent.register_number?.toLowerCase()}@smvec.ac.in`,
           section: matchedStudent.section,
           dept: matchedStudent.department
-        });
+        }, rememberMe);
       } else {
         setStudentAuthError(
           'Authentication failed. Invalid College Email or Enrollment Number. Please check your credentials.'
@@ -161,7 +165,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
         name: matchedAdmin.name,
         id: matchedAdmin.id,
         email: matchedAdmin.email
-      });
+      }, rememberMe);
     } else {
       setAdminAuthError(
         'Access Denied: Invalid credentials. Only authorized administrator accounts are permitted.'
@@ -244,6 +248,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
             <p className="text-xs text-slate-400 mt-1 mb-6">
               Please enter your details to sign in.
             </p>
+
+            {/* Session Expired Notice Banner */}
+            {sessionExpired && (
+              <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs flex items-center space-x-2 mb-4 animate-fade-in">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                <span>Your login session has expired. Please sign in again to continue.</span>
+              </div>
+            )}
 
             {/* Role Switcher Pill */}
             <div className="bg-[#EEF3FA] p-1 rounded-xl flex items-center mb-6">

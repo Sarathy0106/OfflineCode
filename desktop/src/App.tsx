@@ -17,59 +17,46 @@ interface AuthenticatedUser {
   dept?: string;
 }
 
-const STUDENT_TITLES: Record<StudentNavKey, { title: string; subtitle: string }> = {
-  dashboard: {
-    title: 'Student Dashboard',
-    subtitle: 'Overview of scheduled tests, academic progress and playground metrics'
-  },
-  test: {
-    title: 'Available Coding Examinations',
-    subtitle: 'Standardized offline assessments with anti-cheat lockdown kiosk'
-  },
-  practice: {
-    title: 'Interactive Practice Arena',
-    subtitle: 'Solve coding problems with offline Python, C, C++, and Java execution'
-  },
-  result: {
-    title: 'Examination Results & Scorecards',
-    subtitle: 'Cryptographically sealed test scorecards and submission integrity audit'
-  }
-};
+// Session Persistence Constants
+const AUTH_SESSION_KEY = 'offlinecode_auth_session';
+const DEFAULT_SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days session
+const REMEMBER_ME_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days session
 
-const ADMIN_TITLES: Record<AdminTab, { title: string; subtitle: string }> = {
-  dashboard: {
-    title: 'Administrator Dashboard',
-    subtitle: 'Global academic statistics, exam attempts and platform metrics'
-  },
-  leaderboard: {
-    title: 'Academic Leaderboard',
-    subtitle: 'Student rankings by exam scores and practice completion'
-  },
-  question_test: {
-    title: 'Test Question Upload',
-    subtitle: 'Author and publish standardized offline examination specifications'
-  },
-  practice: {
-    title: 'Practice Question Upload',
-    subtitle: 'Create challenges and coding exercises for student practice'
-  },
-  results: {
-    title: 'Results Management [Test + Practice]',
-    subtitle: 'Inspect student code submissions, marks and integrity logs'
-  },
-  monitoring: {
-    title: 'Real-Time Exam Monitoring',
-    subtitle: 'Active student sessions, kiosk violations and heartbeat tracker'
-  },
-  crud: {
-    title: 'Academic Database Management (CRUD)',
-    subtitle: 'Manage student records, sections, subjects, and curriculum topics'
+interface StoredSession {
+  user: AuthenticatedUser;
+  expiresAt: number;
+  rememberMe: boolean;
+}
+
+function loadInitialSession(): { user: AuthenticatedUser | null; expired: boolean } {
+  try {
+    const raw = localStorage.getItem(AUTH_SESSION_KEY);
+    if (!raw) return { user: null, expired: false };
+    const session: StoredSession = JSON.parse(raw);
+    if (!session || !session.user || !session.expiresAt) {
+      localStorage.removeItem(AUTH_SESSION_KEY);
+      return { user: null, expired: false };
+    }
+    if (Date.now() > session.expiresAt) {
+      // Session has expired!
+      localStorage.removeItem(AUTH_SESSION_KEY);
+      return { user: null, expired: true };
+    }
+    return { user: session.user, expired: false };
+  } catch (err) {
+    try {
+      localStorage.removeItem(AUTH_SESSION_KEY);
+    } catch (e) {}
+    return { user: null, expired: false };
   }
-};
+}
 
 export const App: React.FC = () => {
-  // Authentication State: null means user must log in
-  const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(null);
+  // Load persisted session on application startup
+  const initialSession = loadInitialSession();
+  const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(initialSession.user);
+  const [sessionExpired, setSessionExpired] = useState<boolean>(initialSession.expired);
+
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [activeExam, setActiveExam] = useState<Test | null>(null);
@@ -81,6 +68,58 @@ export const App: React.FC = () => {
   // Cloud Database Sync State
   const [syncTrigger, setSyncTrigger] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Handle successful login: persist session to localStorage
+  const handleLogin = (user: AuthenticatedUser, rememberMe = true) => {
+    const duration = rememberMe ? REMEMBER_ME_DURATION_MS : DEFAULT_SESSION_DURATION_MS;
+    const sessionData: StoredSession = {
+      user,
+      expiresAt: Date.now() + duration,
+      rememberMe
+    };
+    try {
+      localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
+    } catch (e) {
+      console.warn('Failed to persist session to localStorage', e);
+    }
+    setSessionExpired(false);
+    setCurrentUser(user);
+  };
+
+  // Handle Sign Out: cleanly purge stored session
+  const handleSignOut = () => {
+    try {
+      localStorage.removeItem(AUTH_SESSION_KEY);
+    } catch (e) {}
+    setActiveExam(null);
+    setCurrentUser(null);
+    setSessionExpired(false);
+  };
+
+  // Periodic session validity check (every 60 seconds)
+  useEffect(() => {
+    if (!currentUser) return;
+    const interval = setInterval(() => {
+      try {
+        const raw = localStorage.getItem(AUTH_SESSION_KEY);
+        if (!raw) {
+          handleSignOut();
+          setSessionExpired(true);
+          return;
+        }
+        const session: StoredSession = JSON.parse(raw);
+        if (Date.now() > session.expiresAt) {
+          handleSignOut();
+          setSessionExpired(true);
+        }
+      } catch (e) {
+        handleSignOut();
+        setSessionExpired(true);
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   // Network & Fullscreen Monitoring via Electron IPC
   useEffect(() => {
@@ -137,12 +176,13 @@ export const App: React.FC = () => {
     }
   };
 
-  // 1. If not authenticated, show Authentication Login Page (with image theme)
+  // 1. If not authenticated, show Authentication Login Page (with persistent session & expiration notice)
   if (!currentUser) {
     return (
       <LoginPage
-        onLogin={(user) => setCurrentUser(user)}
+        onLogin={handleLogin}
         isOnline={isOnline}
+        sessionExpired={sessionExpired}
       />
     );
   }
@@ -175,12 +215,6 @@ export const App: React.FC = () => {
     );
   }
 
-  // Current title metadata based on active role & tab
-  const currentTitleMeta =
-    currentUser.role === 'admin'
-      ? ADMIN_TITLES[adminTab] || { title: 'Administrator Portal', subtitle: '' }
-      : STUDENT_TITLES[studentTab] || { title: 'Student Portal', subtitle: '' };
-
   // 3. Authenticated App Layout (Sidebar + TopBar + Main Content from index.html)
   return (
     <div className="h-screen w-screen flex bg-[#F4F8FD] text-[#1C2333] overflow-hidden font-sans relative select-none">
@@ -206,10 +240,7 @@ export const App: React.FC = () => {
             setStudentTab(tab as StudentNavKey);
           }
         }}
-        onSignOut={() => {
-          setActiveExam(null);
-          setCurrentUser(null);
-        }}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Right Area: TopBar + Page Content */}
