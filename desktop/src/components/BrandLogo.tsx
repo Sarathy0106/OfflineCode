@@ -1,4 +1,5 @@
 import React from 'react';
+import appLogo from '../assets/app_logo.png';
 
 interface BrandLogoProps {
   className?: string;
@@ -16,60 +17,20 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   const isDark = variant === 'dark';
 
   const iconSizes = {
-    sm: 'w-8 h-8',
-    md: 'w-12 h-12',
-    lg: 'w-20 h-20',
-    xl: 'w-28 h-28'
+    sm: 'w-11 h-11',
+    md: 'w-16 h-16',
+    lg: 'w-24 h-24',
+    xl: 'w-32 h-32'
   };
 
   return (
     <div className={`flex flex-col items-center select-none ${className}`}>
-      {/* Sunburst / Lotus Emblem SVG */}
-      <svg
-        viewBox="0 0 120 100"
-        className={`${iconSizes[size]} transition-transform duration-200 hover:scale-105`}
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Golden Sunburst Petals (Top) */}
-        <g fill="#F5A623">
-          {/* Center Petal */}
-          <path d="M60 4 C63 18 63 26 60 36 C57 26 57 18 60 4 Z" />
-          {/* Inner Left 1 */}
-          <path d="M50 10 C56 22 55 29 48 37 C44 28 45 20 50 10 Z" />
-          {/* Inner Right 1 */}
-          <path d="M70 10 C65 20 66 28 72 37 C65 29 64 22 70 10 Z" />
-          {/* Middle Left 2 */}
-          <path d="M38 18 C47 28 48 35 38 42 C32 35 34 26 38 18 Z" />
-          {/* Middle Right 2 */}
-          <path d="M82 18 C86 26 88 35 82 42 C72 35 73 28 82 18 Z" />
-          {/* Outer Left 3 */}
-          <path d="M26 30 C37 36 39 44 28 48 C21 43 21 35 26 30 Z" />
-          {/* Outer Right 3 */}
-          <path d="M94 30 C99 35 99 43 92 48 C81 44 83 36 94 30 Z" />
-          {/* Low Outer Left 4 */}
-          <path d="M18 44 C29 46 32 52 22 56 C14 53 13 47 18 44 Z" />
-          {/* Low Outer Right 4 */}
-          <path d="M102 44 C107 47 106 53 98 56 C88 52 91 46 102 44 Z" />
-        </g>
-
-        {/* Navy Lotus Base Bowl with Grid Lines */}
-        <g fill="#2B3B82" stroke={isDark ? '#4A5D9E' : '#FFFFFF'} strokeWidth="1.8">
-          {/* Curved Base Shape */}
-          <path
-            d="M20 54 Q60 52 100 54 C98 78 84 94 60 96 C36 94 22 78 20 54 Z"
-            strokeLinejoin="round"
-          />
-          {/* Center Vertical Grid Line */}
-          <path d="M60 53 L60 96" />
-          {/* Left Angle Grid Line */}
-          <path d="M42 53 Q44 76 60 96" />
-          {/* Right Angle Grid Line */}
-          <path d="M78 53 Q76 76 60 96" />
-          {/* Horizontal Arc Grid Line */}
-          <path d="M22 70 Q60 67 98 70" />
-        </g>
-      </svg>
+      {/* Official SMVEC Logo Image (Transparent high-res asset) */}
+      <img
+        src={appLogo}
+        alt="SMVEC Student Management Portal Logo"
+        className={`${iconSizes[size]} object-contain drop-shadow transition-transform duration-200 hover:scale-105`}
+      />
 
       {/* Typography: Student Management Portal */}
       <div className="text-center mt-2.5">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { BrandLogo } from './BrandLogo';
+import appLogo from '../assets/app_logo.png';
 import {
   Shield,
   GraduationCap,
@@ -178,9 +179,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline }) => {
       {/* Top Header Bar */}
       <header className="flex items-center justify-between max-w-5xl w-full mx-auto z-10">
         <div className="flex items-center space-x-2.5">
-          <div className="w-9 h-9 rounded-xl bg-[#2B3B82] flex items-center justify-center shadow-md">
-            <Shield className="w-5 h-5 text-white" />
-          </div>
+          <img src={appLogo} alt="SMVEC Logo" className="w-8 h-8 object-contain drop-shadow-sm" />
           <div>
             <h1 className="text-sm font-bold text-[#1A2451] tracking-tight flex items-center gap-2">
               Offline Exam & Code Platform
