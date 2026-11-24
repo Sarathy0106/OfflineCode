@@ -215,10 +215,6 @@ export const App: React.FC = () => {
           title={currentTitleMeta.title}
           subtitle={currentTitleMeta.subtitle}
           isOnline={isOnline}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={handleToggleFullscreen}
-          onMinimize={handleMinimize}
-          onClose={handleClose}
         />
 
         {/* Dynamic Portal Body */}
