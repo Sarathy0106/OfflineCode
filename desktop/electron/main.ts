@@ -104,6 +104,7 @@ function createApplicationMenu() {
 }
 
 function createWindow() {
+  const iconPath = path.join(__dirname, '../public/icon.png');
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 850,
@@ -111,6 +112,7 @@ function createWindow() {
     minHeight: 700,
     backgroundColor: '#020617',
     title: 'Offline Exam & Education Platform',
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     fullscreenable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

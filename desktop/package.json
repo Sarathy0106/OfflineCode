@@ -39,7 +39,8 @@
     "appId": "com.offlinecode.examkiosk",
     "productName": "Offline Exam Kiosk",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "extraResources": [
       {
@@ -53,12 +54,14 @@
     ],
     "mac": {
       "category": "public.app-category.education",
+      "icon": "build/icon.icns",
       "target": [
         "dmg",
         "zip"
       ]
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
