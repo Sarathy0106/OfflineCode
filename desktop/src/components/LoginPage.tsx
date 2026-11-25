@@ -462,7 +462,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isOnline, session
         </div>
         <div className="flex items-center space-x-2">
           <Sparkles className="w-4 h-4 text-[#E69500] flex-shrink-0" />
-          <span>SMVEC AI & DS v1.0</span>
+          <span>SMVEC AI & DS v1.1.0</span>
         </div>
       </footer>
     </div>

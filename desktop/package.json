@@ -11,7 +11,7 @@
     "electron:start": "electron .",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win"
+    "dist:win": "npm run build && electron-builder --win --x64"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -60,8 +60,18 @@
     },
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     }
   }

@@ -47,7 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <h1 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
             Offline Exam & Education Platform
             <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              v1.0 Desktop
+              v1.1.0 Desktop
             </span>
           </h1>
           <p className="text-xs text-slate-400">Secure Offline Testing & Administration Engine</p>
